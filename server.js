@@ -104,6 +104,38 @@ async function ensureWallet(chatId) {
   return wallet;
 }
 
+const BOT_TOKEN = "8337510534:AAEh1f4Nwqz0SBtLoQjsb3Z6Zygj69wPZag";
+const ADMIN_CHAT_ID = "REPLACE_WITH_ADMIN_CHAT_ID"; // your telegram id
+
+async function notifyAdmin(text) {
+  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+
+  await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: ADMIN_CHAT_ID,
+      text,
+      parse_mode: "HTML"
+    })
+  });
+}
+
+async function notifyUser(chatId, text) {
+  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+
+  await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      parse_mode: "HTML"
+    })
+  });
+}
+
+
 // ----------------------------------------------
 // 1. USER API (NO REFERRAL LOGIC HERE)
 // ----------------------------------------------
@@ -197,17 +229,35 @@ app.get("/api/upi", async (req, res) => {
 });
 
 // ----------------------------------------------
-// 4. WITHDRAWAL
+// 4. WITHDRAWAL (DEDUCT BALANCE + NOTIFY ADMIN)
 // ----------------------------------------------
 app.post("/api/withdraw/initiate", async (req, res) => {
   const { chatId, amount, vpa } = req.body;
 
-  const fee = 3.0;
-  const net = Number(amount) - fee;
+  if (!chatId || !amount || !vpa) {
+    return res.status(400).json({ error: "chatId, amount & vpa required" });
+  }
 
+  const wallet = await ensureWallet(chatId);
+
+  const withdrawAmount = Number(amount);
+  const fee = 3.0;
+  const totalDebit = withdrawAmount; // user entered amount includes fee built-in
+  const net = withdrawAmount - fee;
+
+  // CHECK IF USER HAS ENOUGH BALANCE
+  if (wallet.balance < totalDebit) {
+    return res.json({ error: "Insufficient balance" });
+  }
+
+  // DEDUCT BALANCE
+  wallet.balance -= totalDebit;
+  await wallet.save();
+
+  // CREATE WITHDRAWAL RECORD
   const wd = await Withdraw.create({
     chatId,
-    amount,
+    amount: withdrawAmount,
     vpa,
     fee,
     net_amount: net,
@@ -215,22 +265,35 @@ app.post("/api/withdraw/initiate", async (req, res) => {
     initiated_at: new Date()
   });
 
+  // ADD TRANSACTION FOR USER
+  await Txn.create({
+    chatId,
+    type: "debit",
+    amount: withdrawAmount,
+    description: "Withdrawal Initiated",
+    status: "pending",
+    metadata: { withdrawal_id: wd._id }
+  });
+
+  // NOTIFY USER
+  await notifyUser(
+    chatId,
+    `💸 <b>Withdrawal Request Submitted!</b>\n\nAmount: ₹${withdrawAmount}\nVPA: ${vpa}\nStatus: Pending`
+  );
+
+  // NOTIFY ADMIN
+  await notifyAdmin(
+    `🛑 <b>New Withdrawal Request</b>\n\nUser: <code>${chatId}</code>\nAmount: ₹${withdrawAmount}\nVPA: ${vpa}\nWithdraw ID: <code>${wd._id}</code>`
+  );
+
   res.json({
     withdrawal_id: wd._id,
-    amount,
+    amount: withdrawAmount,
     fee,
     net_amount: net,
     status: "pending",
     estimated_time: "2-4 hours"
   });
-});
-
-app.get("/api/withdraw/history", async (req, res) => {
-  const { chatId } = req.query;
-
-  const data = await Withdraw.find({ chatId }).sort({ initiated_at: -1 });
-
-  res.json({ withdrawals: data });
 });
 
 // ----------------------------------------------
