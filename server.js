@@ -261,10 +261,7 @@ app.post("/api/withdraw/initiate", async (req, res) => {
   // Notify user (✔ your required format)
   await notifyUser(
     chatId,
-    `Withdrawal of ₹${withdrawAmount} has been requested.\n` +
-    `It will be credited to your UPI ${vpa} soon.\n` +
-    `Txn id: withdrawal ${wd._id}`
-  );
+    `Withdrawal of ₹${withdrawAmount} has been requested.It will be credited to your UPI ${vpa} soon. (Txn id: withdrawal ${wd._id})`);
 
   // Notify admin
   await notifyAdmin(
@@ -392,8 +389,7 @@ app.all("/api/bot/refer", async (req, res) => {
         // Send correct formatted notification
         await notifyUser(
           inviter.chatId,
-          `🎉You earned ₹3 as invite bonus!\n` +
-          `The user ${chatId} registered using your link.`
+          `🎉You earned ${earned_amount} as invite bonus! The user ${chatId} registered using your link.`
         );
       }
     }
