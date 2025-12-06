@@ -1,0 +1,1777 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Bright Wallet — Invite & Withdraw</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    :root{
+      --bg: #14031f;
+      --muted: rgba(230,205,255,0.75);
+      --accent1: #c86bfa;
+      --accent2: #a44bff;
+      --accent3: #ff8b33;
+      --accent4: #ffbf6e;
+      --glass: rgba(255,255,255,0.03);
+      --radius: 18px;
+      font-family: 'Poppins', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      --shadow-strong: 0 28px 80px rgba(20,3,36,0.75);
+    }
+
+    :root{
+      --bg-center: #1E052E;
+      --bg-edge: #0a0312;
+      --radial-spot: rgba(200,107,250,0.10);
+      --radial-spot-2: rgba(255,139,51,0.08);
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      color: #e8fff7;
+      background: none;
+    }
+
+    body::before{
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(1200px 600px at 50% 30%, var(--radial-spot) 0%, transparent 22%),
+        radial-gradient(1000px 500px at 12% 80%, var(--radial-spot-2) 0%, transparent 20%),
+        linear-gradient(180deg, var(--bg-center) 0%, var(--bg-edge) 62%);
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: cover;
+      opacity: 1;
+    }
+
+    body::after{
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml;utf8,\
+        <svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'>\
+          <filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='1' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter>\
+          <rect width='100%' height='100%' filter='url(#n)' opacity='0.03' fill='white'/>\
+        </svg>");
+      background-repeat: repeat;
+      mix-blend-mode: overlay;
+      opacity: 0.6;
+    }
+
+    .app{ position: relative; z-index: 2; }
+    .bg-anim, .particles { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+
+    @media (max-width: 480px){
+      body::before, body::after { background-attachment: scroll; }
+    }
+
+    .app{
+      position:relative;
+      z-index:1;
+      max-width:940px;
+      margin:20px auto;
+      padding:22px;
+      min-height:calc(100vh - 40px);
+      display:flex;
+      flex-direction:column;
+      gap:18px
+    }
+
+    .bg-anim{
+      position:fixed;
+      inset:0;
+      z-index:0;
+      pointer-events:none;
+      overflow:hidden
+    }
+
+    .blob{
+      position:absolute;
+      border-radius:50%;
+      filter:blur(66px);
+      opacity:0.32;
+      mix-blend-mode:screen;
+      transform-origin:center
+    }
+
+    .b1{ opacity:0.32 }
+    .b2{ opacity:0.30 }
+    .b3{ opacity:0.28 }
+    .b4{ opacity:0.24 }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
+      border-radius:var(--radius);
+      padding:20px;
+      margin-bottom: 20px;
+      border:1px solid rgba(255,255,255,0.22);
+      box-shadow: var(--shadow-strong);
+      backdrop-filter: blur(16px) saturate(220%);
+    }
+
+    .header-row{
+      display:flex;
+      align-items:center;
+      gap:16px;
+      flex-wrap:wrap
+    }
+
+    .avatar{
+      position:relative;
+      overflow:hidden;
+      width:66px;
+      height:66px;
+      border-radius:18px;
+      flex-shrink:0;
+      background:#1E052E;
+      border:2px solid rgba(255,255,255,0.15);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+      font-size:28px;
+      color:#fff;
+      box-shadow:0 0 18px rgba(255,255,255,0.10) inset;
+    }
+
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 16px;
+    }
+
+    .avatar::before{
+      content:"";
+      position:absolute;
+      inset:-30%;
+      border-radius:50%;
+      background:conic-gradient(
+        from 0deg,
+        #ffea9c 0%,
+        #ffd662 12%,
+        #ffb300 22%,
+        #ffea9c 35%,
+        #ffd662 48%,
+        #ffb300 65%,
+        transparent 80%
+      );
+      animation:rotateRing 15.5s linear infinite;
+      filter:blur(10px);
+      opacity:0.9;
+    }
+
+    @keyframes rotateRing{
+      0% { transform:rotate(0deg); }
+      100% { transform:rotate(360deg); }
+    }
+
+    .avatar::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:inherit;
+      background:linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04));
+      mix-blend-mode:screen;
+      pointer-events:none;
+    }
+
+    .user-info{
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      gap:4px;
+      min-width:0
+    }
+
+    .user-info h2{
+      margin:0;
+      font-size:20px;
+      font-weight:900;
+      line-height:1
+    }
+
+    .user-info p{
+      margin:0;
+      font-size:13px;
+      color:var(--muted);
+      line-height:1
+    }
+
+    .below-header{
+      margin-top:14px;
+      display:flex;
+      flex-direction:column;
+      gap:14px
+    }
+
+    .balance-box{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:16px;
+      border-radius:14px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.18), rgba(180,255,230,0.18));
+      border:1px solid rgba(255,255,255,0.35);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      backdrop-filter: blur(8px);
+    }
+
+    .bal-left .lbl{
+      font-size:13px;
+      color:var(--muted)
+    }
+
+    .bal-left .amt{
+      font-size:36px;
+      font-weight:600;
+      color:#e9fff7
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 12px;
+      border-radius:14px;
+      font-size:13px;
+      font-weight:900;
+      letter-spacing:0.4px;
+      text-transform:uppercase;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.01));
+      color:#b4ff7c;
+      border:1px solid rgba(133,255,100,0.55);
+      box-shadow: 0 6px 18px rgba(0,120,40,0.35),
+                  0 0 12px rgba(120,255,80,0.25) inset,
+                  inset 0 1px 4px rgba(255,255,255,0.18);
+      transform: translateZ(0);
+      transition: all .2s ease;
+    }
+
+    .pill i{
+      font-size:13px;
+      color:#b4ff7c;
+    }
+
+    .pill:hover{
+      filter:brightness(1.25);
+      transform:translateY(-2px);
+      box-shadow: 0 10px 24px rgba(0,160,60,0.45),
+                  0 0 18px rgba(120,255,80,0.35) inset;
+    }
+
+    .withdraw .btn{
+      position:relative;
+      overflow:hidden;
+      display:block;
+      width:100%;
+      padding:16px 20px;
+      margin:10px 0;
+      border-radius:10px;
+      font-size:20px;
+      font-weight:700;
+      text-transform:uppercase;
+      font-style:italic;
+      cursor:pointer;
+      outline:none;
+      letter-spacing:0.8px;
+      color:#fff;
+      background: linear-gradient(#57cc03 10%, #004f1c), linear-gradient(#b1fd2b, #31eb6f) !important;
+      border:2px solid #174207;
+      box-shadow: rgba(0,0,0,0.25) 0px 4px 6px -1px,
+                  rgba(0,0,0,0.22) 0px 2px 4px -1px,
+                  0 0 22px rgba(255,215,80,0.35) inset;
+      transition: all .25s ease;
+    }
+
+    .withdraw .btn::after{
+      content:"";
+      position:absolute;
+      top:0;
+      left:-120%;
+      width:70%;
+      height:100%;
+      transform:skewX(-25deg);
+      background:linear-gradient(
+        120deg,
+        rgba(255,255,255,0.0) 0%,
+        rgba(255,255,255,0.6) 50%,
+        rgba(255,255,255,0.0) 100%
+      );
+      animation:shineBtn 2.8s infinite ease-in-out;
+      pointer-events:none;
+    }
+
+    @keyframes shineBtn{
+      0% { left:-120%; }
+      50% { left:130%; }
+      100% { left:130%; }
+    }
+
+    .withdraw .btn:hover{
+      filter: brightness(1.18);
+      transform: translateY(-3px);
+      box-shadow: rgba(0,0,0,0.28) 0px 6px 12px -1px,
+                  0 0 32px rgba(255,215,80,0.55) inset;
+    }
+
+    .withdraw .btn:active{
+      transform: scale(0.97);
+      filter: brightness(0.9);
+    }
+
+    .ref-card{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      padding:14px;
+      border-radius:12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
+      border:1px solid rgba(255,255,255,0.22);
+      backdrop-filter: blur(16px) saturate(220%);
+    }
+
+    .invite-row{
+      display:flex;
+      gap:8px;
+      align-items:center
+    }
+
+    .link-box{
+      flex:1;
+      padding:10px;
+      border-radius:10px;
+      background:linear-gradient(15deg, rgba(255,255,255,0.02), transparent);
+      font-family:'Roboto Mono','Courier New',monospace;
+      font-size:15px;
+      font-weight:600;
+      text-align:center;
+      overflow-wrap:anywhere;
+      color:#dffbf4
+    }
+
+    .ref-stats{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:20px
+    }
+
+    .stat{
+      display:flex;
+      flex-direction:column;
+      gap:6px
+    }
+
+    .stat .n{
+      font-size:22px;
+      font-weight:900;
+      display:flex;
+      align-items:center;
+      gap:8px
+    }
+
+    .stat .l{
+      font-size:12px;
+      color:rgba(220,255,245,0.72)
+    }
+
+    .invite-actions{
+      display:flex;
+      gap:8px;
+      margin-top:6px
+    }
+
+    .glass-btn{
+      flex:1;
+      padding:10px 0;
+      font-size:15px;
+      font-weight:700;
+      border:none;
+      border-radius:999px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color:#eafcff;
+      box-shadow: 0 8px 20px rgba(2,8,18,0.6)
+    }
+
+    .copy-btn{
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      border:1px solid rgba(255,255,255,0.08)
+    }
+
+    .share-btn{
+      background: linear-gradient(135deg, rgba(40,230,200,0.10), rgba(10,190,170,0.08));
+      border:1px solid rgba(0,210,180,0.12);
+      box-shadow: 0 8px 26px rgba(10,200,180,0.06)
+    }
+
+    .invite-details{
+      margin-top:0;
+      padding:16px;
+      border-radius:16px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
+      border:1px solid rgba(255,255,255,0.22);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 8px 28px rgba(0,6,12,0.32)
+    }
+
+    .transactions.card{
+      padding:12px
+    }
+
+    .tx{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:12px;
+      border-radius:12px;
+      margin-bottom:10px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)
+    }
+
+    .tx .left{
+      display:flex;
+      gap:12px;
+      align-items:center
+    }
+
+    .tx .dot{
+      width:56px;
+      height:56px;
+      border-radius:12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+      background:linear-gradient(135deg,#041225, rgba(255,255,255,0.02));
+      border:2px solid rgba(255,255,255,0.03)
+    }
+
+    .tx .title{
+      font-weight:800;
+      font-size:15px;
+      color:#e8fff7
+    }
+
+    .tx .time{
+      font-size:11px;
+      margin-top:3px;
+      color:var(--muted)
+    }
+
+    .badge{
+      padding:8px 9px;
+      border-radius:999px;
+      font-size:13px;
+      font-weight:800
+    }
+
+    .badge.s{
+      background:linear-gradient(180deg, rgba(34,197,94,0.06), rgba(34,197,94,0.02));
+      color:#bff7c8
+    }
+
+    .badge.p{
+      background:linear-gradient(180deg, rgba(250,204,21,0.06), rgba(250,204,21,0.02));
+      color:#ffefb8
+    }
+
+    .badge.r{
+      background:linear-gradient(180deg, rgba(239,68,68,0.04), rgba(239,68,68,0.02));
+      color:#ffb3b8
+    }
+
+    .foot{
+      margin-top:10px;
+      text-align:center;
+      color:var(--muted);
+      font-size:13px
+    }
+
+    .balance-val{
+      margin-left:6px;
+      font-weight:900
+    }
+
+    .modal-backdrop{
+      position:fixed;
+      inset:0;
+      z-index:9999;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background: linear-gradient(180deg, rgba(0,6,10,0.72), rgba(0,0,0,0.9));
+      backdrop-filter: blur(8px) saturate(140%);
+      -webkit-backdrop-filter: blur(8px) saturate(140%);
+      transition:opacity .26s ease;
+    }
+
+    .modal{
+      width:460px;
+      max-width:80%;
+      border-radius:16px;
+      padding:18px;
+      background: linear-gradient(180deg, rgba(4,14,18,0.82), rgba(6,18,20,0.56)),
+                  radial-gradient(1200px 300px at -10% -10%, rgba(0,200,165,0.015), transparent 10%);
+      backdrop-filter: blur(14px) saturate(130%);
+      -webkit-backdrop-filter: blur(14px) saturate(130%);
+      border:1px solid rgba(0,210,180,0.10);
+      box-shadow: 0 36px 120px rgba(0,6,12,0.9), 0 0 38px rgba(0,200,165,0.04) inset;
+      transform: translateY(10px) scale(.98);
+      opacity:0;
+      transition:transform .26s cubic-bezier(.2,.9,.2,1),opacity .22s ease;
+      position:relative;
+      overflow:hidden;
+    }
+
+    .modal::after{
+      content:"";
+      position:absolute;
+      top:-64px;
+      left:-64px;
+      width:200px;
+      height:200px;
+      background:radial-gradient(circle, rgba(0,200,165,0.08), transparent 60%);
+      filter:blur(28px);
+      pointer-events:none
+    }
+
+    .modal::before{
+      content:"";
+      position:absolute;
+      inset:-30%;
+      background:radial-gradient(ellipse at center, rgba(0,200,165,0.03), transparent 30%);
+      transform:rotate(6deg);
+      pointer-events:none
+    }
+
+    .modal-backdrop.open{
+      display:flex
+    }
+
+    .modal-backdrop.open .modal{
+      transform:translateY(0) scale(1);
+      opacity:1
+    }
+
+    .modal h3{
+      margin:0 0 8px 0;
+      font-size:18px;
+      letter-spacing:0.2px;
+      color:#e8fff7
+    }
+
+    .modal p.small{
+      margin:0 0 12px 0;
+      color:var(--muted);
+      font-size:13px
+    }
+
+    .vpa-input{
+      width:90%;
+      padding:12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.04);
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
+      color:#e8fff7;
+      outline:none;
+      font-size:14px;
+      box-shadow: 0 8px 30px rgba(2,6,12,0.48) inset;
+    }
+
+    .vpa-input::placeholder{
+      color: rgba(200,255,244,0.46)
+    }
+
+    .vpa-input:focus{
+      box-shadow: 0 18px 46px rgba(0,210,180,0.08), 0 0 18px rgba(0,210,180,0.04) inset;
+      border-color: rgba(0,210,180,0.28)
+    }
+
+    .amount-grid{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap:10px;
+      margin-top:18px;
+      margin-bottom:5px;
+      padding:4px 2px;
+    }
+
+    .amount-item{
+      position:relative;
+      overflow:hidden;
+      padding:10px 9px 12px;
+      border-radius:14px;
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      justify-content:center;
+      cursor:pointer;
+      user-select:none;
+      font-size:17px;
+      font-weight:900;
+      letter-spacing:0.4px;
+      color:#f5fffb;
+      background: radial-gradient(circle at 0% 0%, rgba(255,255,255,0.14), transparent 55%),
+                  linear-gradient(145deg, rgba(7,18,26,0.98), rgba(3,9,14,0.98));
+      border:1px solid rgba(150,255,220,0.3);
+      box-shadow:0 10px 20px rgba(0,0,0,0.75);
+      transition: transform .16s ease,
+                  box-shadow .18s ease,
+                  border .18s ease,
+                  background .18s ease,
+                  color .16s ease;
+    }
+
+    .amount-item::before{
+      content:"";
+      width:38px;
+      height:18px;
+      display:block;
+      background:url('https://images.icon-icons.com/2699/PNG/512/upi_logo_icon_169316.png') center/contain no-repeat;
+      margin-bottom:8px;
+      padding:0;
+      border-radius:6px;
+      background-color:white;
+      backdrop-filter:blur(6px);
+      border:1px solid rgba(255,255,255,0.3);
+      box-shadow:0 0 10px rgba(255,255,255,0.25);
+    }
+
+    .amount-item::after{
+      content:"\f0e7";
+      font-family:"Font Awesome 6 Free";
+      font-weight:900;
+      position:absolute;
+      right:7px;
+      bottom:6px;
+      font-size:11px;
+      opacity:0.55;
+      transition:transform .16s ease, opacity .16s ease;
+    }
+
+    .amount-item:hover{
+      transform:translateY(-4px) scale(1.03);
+      box-shadow:0 18px 32px rgba(0,0,0,0.9);
+      border-color:rgba(190,255,235,0.7);
+    }
+
+    .amount-item:hover::after{
+      transform:translateX(1px);
+      opacity:0.95;
+    }
+
+    .amount-item.selected{
+      transform:translateY(-4px) scale(1.05);
+      background: radial-gradient(circle at 12% 0%, rgba(130,255,210,0.35), transparent 60%),
+                  linear-gradient(135deg, rgba(0,210,150,1), rgba(0,135,92,1));
+      border-color:rgba(230,255,245,0.95);
+      color:#ffffff;
+      box-shadow: 0 0 24px rgba(0,255,200,0.7),
+                  0 12px 26px rgba(0,110,80,0.9),
+                  inset 0 0 12px rgba(255,255,255,0.18);
+    }
+
+    .amount-item.selected::before{
+      background: linear-gradient(90deg,#ffffff 0%,#ffe08a 50%,#ffffff 100%);
+      box-shadow: 0 0 16px rgba(255,255,255,0.95),
+                  0 0 10px rgba(255,200,120,0.9);
+    }
+
+    @media (max-width:480px){
+      .amount-grid{
+        gap:8px;
+      }
+      .amount-item{
+        padding:9px 7px 10px;
+        font-size:16px;
+      }
+    }
+
+    .modal .controls{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      gap:12px;
+      width:100%;
+      margin-top:14px;
+    }
+
+    .btn-prim{
+      width:50%;
+      text-align:center;
+      position:relative;
+      overflow:hidden;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:9px 22px;
+      border-radius:12px;
+      font-size:18px;
+      font-weight:800;
+      text-transform:uppercase;
+      cursor:pointer;
+      letter-spacing:0.7px;
+      outline:none;
+      width:80%;
+      color:#fff;
+      border:2px solid #174207;
+      background: linear-gradient(#57cc03 10%, #004f1c), linear-gradient(#b1fd2b, #31eb6f) !important;
+      box-shadow: rgba(0,0,0,0.25) 0px 4px 6px -1px,
+                  rgba(0,0,0,0.22) 0px 2px 4px -1px,
+                  0 0 22px rgba(255,215,80,0.35) inset;
+      transition: all .25s ease;
+    }
+
+    .btn-prim::after{
+      content:"";
+      position:absolute;
+      top:0;
+      left:-120%;
+      width:70%;
+      height:100%;
+      transform:skewX(-25deg);
+      background:linear-gradient(
+        120deg,
+        rgba(255,255,255,0.0) 0%,
+        rgba(255,255,255,0.6) 50%,
+        rgba(255,255,255,0.0) 100%
+      );
+      animation:shineBtn 2.8s infinite ease-in-out;
+      pointer-events:none;
+    }
+
+    .btn-ghost{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:20%;
+      padding:6px 18px;
+      border-radius:10px;
+      font-size:15px;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:0.6px;
+      cursor:pointer;
+      color:#ccc;
+      border:1.0px solid grey;
+      background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.01));
+      transition:all .22s ease;
+    }
+
+    @media (max-width:480px){
+      .modal{
+        width:94%;
+        padding:14px;
+        border-radius:12px
+      }
+      .amount-grid{
+        grid-template-columns: repeat(3, 1fr);
+        gap:8px
+      }
+      .vpa-input{
+        padding:10px
+      }
+    }
+
+    @media (min-width:740px){
+      .app{
+        max-width:940px
+      }
+      .below-header{
+        flex-direction:row;
+        gap:16px;
+        align-items:flex-start
+      }
+      .balance-box{
+        flex:1;
+        min-width:0
+      }
+      .ref-card{
+        width:340px;
+        flex:0 0 340px
+      }
+    }
+
+    *{
+      -webkit-user-select:none;
+      -moz-user-select:none;
+      -ms-user-select:none;
+      user-select:none;
+      -webkit-tap-highlight-color:transparent !important;
+      -webkit-touch-callout:none;
+    }
+
+    img,a,button,input,textarea,div{
+      -webkit-touch-callout:none !important
+    }
+
+    img,a{
+      -webkit-user-drag:none;
+      user-drag:none
+    }
+
+    button,input,textarea{
+      outline:none !important;
+      box-shadow:none !important
+    }
+
+    button,.glass-btn,.btn,.amount-item{
+      -webkit-tap-highlight-color:transparent !important;
+      -webkit-user-select:none !important
+    }
+
+    .btn-prim{
+      background: linear-gradient(90deg, var(--accent1), var(--accent3));
+      color:#200020;
+      box-shadow: 0 12px 45px rgba(200,107,250,0.46), 0 0 32px rgba(255,139,51,0.35) inset;
+    }
+
+    .btn-prim{
+      color:white;
+    }
+
+    /* Loading state styles */
+    .loading {
+      opacity: 0.7;
+      pointer-events: none;
+      position: relative;
+    }
+
+    .loading::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 20px;
+      height: 20px;
+      margin: -10px 0 0 -10px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: var(--accent1);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-anim" aria-hidden>
+    <div class="blob b1"></div>
+    <div class="blob b2"></div>
+    <div class="blob b3"></div>
+    <div class="blob b4"></div>
+  </div>
+
+  <div class="app">
+    <div class="card">
+      <div class="header-row">
+        <div class="avatar">
+          <!-- Avatar will be loaded from Telegram data -->
+        </div>
+        <div class="user-info" aria-label="User name and handle">
+          <h2 id="userName">Loading...</h2>
+          <p id="userUsername">@username</p>
+        </div>
+      </div>
+
+      <div class="below-header">
+        <div class="balance-box" aria-hidden="false">
+          <div class="bal-left">
+            <div class="lbl">Wallet Balance</div>
+            <div class="amt">₹<span class="balance-val" id="balanceVal">0.00</span></div>
+          </div>
+          <div class="pill">Active</div>
+        </div>
+
+        <div style="width:100%">
+          <div class="withdraw" style="margin-top:10px">
+            <button class="btn" id="withdrawBtn">Withdraw <i class="fa-solid fa-right-from-bracket"></i></button>
+          </div>
+          
+          <!-- Minimum balance warning -->
+          <div id="minBalanceWarning" style="
+            margin-top: 4px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            background: linear-gradient(90deg, rgba(255,100,100,0.08), rgba(255,50,50,0.04));
+            border: 1px solid rgba(255,100,100,0.2);
+            font-size: 11px;
+            color: #ffb3b3;
+            display: none;
+            align-items: center;
+            gap: 6px;
+          ">
+            <i class="fa-solid fa-exclamation-circle" style="font-size: 10px;"></i>
+            <span>Minimum ₹10 required for withdrawal</span>
+          </div>
+          
+          <div id="upiLinkedBox" style="
+            margin-top:8px;
+            padding:8px 10px;
+            border-radius:12px;
+            background:linear-gradient(135deg, rgba(255,255,255,0.05), rgba(0,200,160,0.10));
+            border:1px solid rgba(0,255,200,0.22);
+            display:none;
+            align-items:center;
+            justify-content:space-between;
+            gap:8px;
+            font-family:'Poppins',sans-serif;
+            color:#eafff7;
+          ">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <img src="https://img.icons8.com/color/512/bhim.png"
+                   style="width:26px;height:auto;opacity:0.95;">
+              <div style="display:flex;flex-direction:column;line-height:1.05;">
+                <span style="font-size:11px;opacity:0.7;">UPI Linked</span>
+                <span id="linkedVpa" style="font-size:13px;font-weight:800;"></span>
+              </div>
+            </div>
+            <div style="
+              font-size:9px;
+              font-weight:900;
+              padding:4px 8px;
+              border-radius:999px;
+              background:rgba(0,255,160,0.18);
+              border:1px solid rgba(0,255,160,0.32);
+              color:#86ffcf;
+              text-transform:uppercase;
+              letter-spacing:0.6px;
+            ">
+              Active
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="invite-details">
+      <div class="ref-stats">
+        <div class="stat">
+          <div class="n"><i class="fa-solid fa-user-plus" style="color:#7ee787;"></i> <span id="totalRefers">0</span></div>
+          <div class="l">Total Refers</div>
+        </div>
+        <div class="stat" style="align-items:flex-end">
+          <div class="n"><i class="fa-solid fa-wallet" style="color:#ffe29c"></i> <span class="amt">₹<span class="balance-val" id="referralIncome">0.00</span></span></div>
+          <div class="l">Referral Income</div>
+        </div>
+      </div>
+    </div>
+    
+    <div style="
+      margin-top:5px;
+      padding:18px 20px;
+      border-radius:16px;
+      background:linear-gradient(135deg, rgba(0,200,255,0.25), rgba(0,90,160,0.35));
+      border:1px solid rgba(255,255,255,0.35);
+      box-shadow:0 6px 18px rgba(0,0,0,0.25);
+      backdrop-filter:blur(8px);
+      font-family:'Poppins',sans-serif;
+      color:#fff;
+    ">
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:10px;
+      ">
+        <span style="font-size:20px;font-weight:800;display:flex;align-items:center;gap:10px;">
+          <i class='fa-solid fa-sack-dollar' style="font-size:24px;color:#00f6ff;"></i>
+          Bot Budget
+        </span>
+        <span id="budgetPercentage" style="font-size:18px;font-weight:700;">0%</span>
+      </div>
+      <div style="
+        width:100%;
+        height:16px;
+        border-radius:10px;
+        background:rgba(255,255,255,0.15);
+        overflow:hidden;
+        position:relative;
+      ">
+        <div id="progressFill" style="
+          width:0%;
+          height:100%;
+          border-radius:10px;
+          background:linear-gradient(90deg,#00f6ff,#00c3ff,#0099ff,#00f6ff);
+          animation:slideShine 3s linear infinite;
+          position:relative;
+        "></div>
+      </div>
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        margin-top:12px;
+        font-size:14px;
+        font-weight:600;
+      ">
+        <span id="distributedAmount">Distributed: ₹0</span>
+        <span id="leftAmount">Left: ₹0</span>
+      </div>
+    </div>
+
+    <div id="refWarning" role="alert" aria-live="polite"
+         style="margin:12px 0;padding:12px 14px;border-radius:12px;
+                background:linear-gradient(90deg, rgba(255,230,220,0.04), rgba(20,6,6,0.03));
+                border:1px solid rgba(255,110,90,0.12);
+                box-shadow:0 10px 30px rgba(0,0,0,0.45);
+                color:#ffeef0;display:flex;align-items:flex-start;gap:12px;position:relative;">
+      <div style="flex-shrink:0;font-size:20px;line-height:1.1;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
+          <path d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2zm0 6.5v6m0 3.5v.01" stroke="#ffb3b3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:900;font-size:14px;color:#ffdcdc;margin-bottom:4px">Important — ध्यान दे</div>
+        <div style="font-size:13px;color:rgba(255,235,235,0.92);line-height:1.35">
+          Fake referrals or referrals who are <strong>not from the earning field</strong> will lead to <strong>withdrawal being hold</strong>.
+          Please refer only genuine friends. Repeated misuse will result in automatic action — withdrawals and referral rewards will be stopped.
+        </div>
+      </div>
+      <button aria-label="Close warning" onclick="(function(e){const el=document.getElementById('refWarning'); el.style.transition='opacity .22s ease, transform .22s ease'; el.style.opacity='0'; el.style.transform='translateY(-8px)'; setTimeout(()=>el.remove(),240);})(event)"
+              style="border:none;background:transparent;color:rgba(255,220,220,0.85);font-size:16px;font-weight:800;
+                     padding:6px;border-radius:8px;cursor:pointer;flex-shrink:0;margin-left:6px;">
+        ✕
+      </button>
+    </div>
+
+    <div class="ref-card" aria-label="Referral card">
+      <div style="font-weight:900">Referral</div>
+      <div style="font-size:12px; color:rgba(255,255,255,0.75); margin-top:-5px; margin-bottom:0px;">
+        You will earn <b>₹<span id="referralReward">3</span></b> for each successful referral.
+      </div>
+      <div class="invite-row">
+        <div class="link-box" id="inviteLink">Loading...</div>
+      </div>
+      <div class="invite-actions">
+        <button class="glass-btn copy-btn" id="copyBtn"><i class="fa-regular fa-copy"></i> Copy</button>
+        <button class="glass-btn share-btn" id="shareBtn"><i class="fa-solid fa-share-nodes"></i> Share</button>
+      </div>
+    </div>
+
+    <div style="
+      padding:16px 18px;
+      border-radius:14px;
+      background:linear-gradient(135deg, rgba(255,255,255,0.12), rgba(120,255,205,0.18));
+      border:1px solid rgba(255,255,255,0.25);
+      box-shadow:0 4px 12px rgba(0,0,0,0.18), inset 0 0 12px rgba(255,255,255,0.10);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-family:'Poppins', sans-serif;
+    ">
+      <span style="
+        display:flex;
+        align-items:center;
+        gap:10px;
+        font-size:18px;
+        font-weight:800;
+        color:#e9fffa;
+        letter-spacing:0.6px;
+      ">
+        <i class="fa-solid fa-money-bill-trend-up" style="font-size:22px;color:#7BFFCF;"></i>
+        Amount Paid
+      </span>
+      <span id="amountPaid" style="
+        font-size:24px;
+        font-weight:900;
+        background:linear-gradient(135deg,#F6E27A,#F1C840,#E1B33A,#F6E27A);
+        -webkit-background-clip:text;
+        -webkit-text-fill-color:transparent;
+        letter-spacing:1px;
+      ">
+        ₹0
+      </span>
+    </div>
+
+    <div class="transactions card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-weight:900">Transactions</div>
+        <div style="font-size:12px;color:var(--muted)">Recent</div>
+      </div>
+      <div class="txn-list" id="txnList">
+        <!-- Transactions will be loaded here -->
+      </div>
+    </div>
+
+    <div class="foot">Share invite link, get ₹<span id="referralAmount">3.00</span> per friend. Withdrawals processed via linked VPA.</div>
+  </div>
+
+  <!-- Modal Backdrop -->
+  <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" id="modalContent">
+      <h3 id="modalTitle">Title</h3>
+      <div id="modalBody"></div>
+      <div style="display:flex;gap:8px;margin-top:25px; margin-bottom:7px; justify-content:flex-end">
+        <button class="btn-ghost" id="modalCancel"><i style="font-size:22px"class="fa-solid fa-xmark"></i></button>
+        <button class="btn-prim" id="modalPrimary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const notyf = new Notyf();
+    const API_BASE_URL = 'https://backed-nu.vercel.app'; // Replace with your API base URL
+    
+    // Telegram WebApp instance
+    const tg = window.Telegram?.WebApp;
+    let chatId = '';
+    let userData = null;
+    let hasVpa = false;
+    let userVpa = '';
+
+    // DOM Elements
+    const backdrop = document.getElementById('modalBackdrop');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+    const modalCancel = document.getElementById('modalCancel');
+    const modalPrimary = document.getElementById('modalPrimary');
+    const inviteLink = document.getElementById('inviteLink');
+    const balanceVal = document.getElementById('balanceVal');
+    const linkedVpa = document.getElementById('linkedVpa');
+    const upiLinkedBox = document.getElementById('upiLinkedBox');
+    const totalRefers = document.getElementById('totalRefers');
+    const referralIncome = document.getElementById('referralIncome');
+    const referralReward = document.getElementById('referralReward');
+    const referralAmount = document.getElementById('referralAmount');
+    const budgetPercentage = document.getElementById('budgetPercentage');
+    const progressFill = document.getElementById('progressFill');
+    const distributedAmount = document.getElementById('distributedAmount');
+    const leftAmount = document.getElementById('leftAmount');
+    const amountPaid = document.getElementById('amountPaid');
+    const txnList = document.getElementById('txnList');
+    const userName = document.getElementById('userName');
+    const userUsername = document.getElementById('userUsername');
+    const avatarElement = document.querySelector('.avatar');
+    const withdrawBtn = document.getElementById('withdrawBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const shareBtn = document.getElementById('shareBtn');
+    const minBalanceWarning = document.getElementById('minBalanceWarning');
+
+    // Set initial loading state
+    function setLoadingState(isLoading) {
+      if (isLoading) {
+        document.body.classList.add('loading');
+        withdrawBtn.disabled = true;
+        copyBtn.disabled = true;
+        shareBtn.disabled = true;
+      } else {
+        document.body.classList.remove('loading');
+        withdrawBtn.disabled = false;
+        copyBtn.disabled = false;
+        shareBtn.disabled = false;
+      }
+    }
+
+    // Initialize Telegram WebApp
+    function initTelegramWebApp() {
+      if (!tg) {
+        console.warn('Telegram WebApp not available, using fallback data');
+        // For testing without Telegram
+        chatId = '123456789';
+        loadUserData(chatId);
+        return;
+      }
+
+      // Expand the WebApp to full height
+      tg.expand();
+      
+      // Get Telegram user data
+      const user = tg.initDataUnsafe?.user;
+      
+      if (user) {
+        chatId = user.id.toString();
+        
+        // Get referral code from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const refCode = urlParams.get('start') || urlParams.get('ref');
+        
+        // Update UI with Telegram data immediately
+        updateUserUI(user);
+        
+        // Initialize user with Telegram data
+        initUserWithTelegramData(user, refCode);
+      } else {
+        notyf.error('Unable to get Telegram user data');
+        setLoadingState(false);
+      }
+    }
+
+    // Update UI with Telegram user info
+    function updateUserUI(telegramUser) {
+      // Set user name
+      const displayName = telegramUser.first_name || telegramUser.username || 'User';
+      userName.textContent = displayName;
+      
+      // Set username
+      if (telegramUser.username) {
+        userUsername.textContent = `@${telegramUser.username}`;
+      } else {
+        userUsername.textContent = `ID: ${telegramUser.id}`;
+      }
+      
+      // Set avatar
+      if (telegramUser.photo_url) {
+        avatarElement.innerHTML = `<img src="${telegramUser.photo_url}" alt="${displayName}" />`;
+      } else {
+        // Use first letter of name as fallback
+        const firstLetter = displayName.charAt(0).toUpperCase();
+        avatarElement.textContent = firstLetter;
+      }
+    }
+
+    // Initialize user with Telegram data
+    async function initUserWithTelegramData(telegramUser, refCode = null) {
+      try {
+        setLoadingState(true);
+        
+        // Prepare query parameters
+        const params = new URLSearchParams({
+          chatId: chatId,
+          username: telegramUser.username || '',
+          avatar: telegramUser.photo_url || '',
+          ...(refCode && { ref: refCode })
+        });
+
+        // Call API to create/update user
+        const response = await fetch(`${API_BASE_URL}/api/user/info?${params}`);
+        const data = await response.json();
+
+        if (data) {
+          // Load user data
+          await loadUserData(chatId);
+        } else {
+          throw new Error('Failed to initialize user');
+        }
+      } catch (error) {
+        console.error('Error initializing user:', error);
+        notyf.error('Failed to initialize user');
+      } finally {
+        setLoadingState(false);
+      }
+    }
+
+    // Load user data from API
+    async function loadUserData(userId) {
+      try {
+        setLoadingState(true);
+        
+        // Load all data in parallel
+        const [userInfo, walletBalance, transactions, referralInfo, upiInfo] = await Promise.allSettled([
+          fetch(`${API_BASE_URL}/api/user/info?chatId=${userId}`).then(r => r.json()),
+          fetch(`${API_BASE_URL}/api/wallet/balance?chatId=${userId}`).then(r => r.json()),
+          fetch(`${API_BASE_URL}/api/wallet/transactions?chatId=${userId}&limit=10`).then(r => r.json()),
+          fetch(`${API_BASE_URL}/api/referral?chatId=${userId}`).then(r => r.json()),
+          fetch(`${API_BASE_URL}/api/upi?chatId=${userId}`).then(r => r.json())
+        ]);
+
+        // Update UI with all data
+        updateUI({
+          user: userInfo.value,
+          balance: walletBalance.value,
+          transactions: transactions.value,
+          referral: referralInfo.value,
+          upi: upiInfo.value
+        });
+        
+      } catch (error) {
+        console.error('Error loading user data:', error);
+        notyf.error('Failed to load user data');
+      } finally {
+        setLoadingState(false);
+      }
+    }
+
+    function updateUI(data) {
+      // Update balance
+      if (data.balance?.balance) {
+        balanceVal.textContent = parseFloat(data.balance.balance).toFixed(2);
+      }
+      
+      // Update minimum balance warning and withdraw button
+      updateWithdrawButtonState();
+      
+      // Update referral stats
+      if (data.referral) {
+        totalRefers.textContent = data.referral.total_referrals || 0;
+        referralIncome.textContent = data.referral.total_earned || '0.00';
+        referralReward.textContent = data.referral.commission_per_referral || '3';
+        referralAmount.textContent = data.referral.commission_per_referral || '3.00';
+        
+        // Update invite link
+        if (data.referral.link) {
+          inviteLink.textContent = `https://t.me/Webt2AppBot?start=${data.user.referral_code}`;
+        } else if (data.user?.referral_code) {
+          inviteLink.textContent = `https://t.me/Webt2AppBot?start=${data.user.referral_code}`;
+        }
+      }
+      
+      // Update UPI info
+      if (data.upi?.vpa) {
+        hasVpa = true;
+        userVpa = data.upi.vpa;
+        linkedVpa.textContent = userVpa;
+        upiLinkedBox.style.display = 'flex';
+      }
+      
+      // Update transactions
+      if (data.transactions?.transactions) {
+        updateTransactions(data.transactions.transactions);
+      } else {
+        txnList.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;">No transactions yet</div>';
+      }
+      
+      // Update budget info
+      updateBudgetInfo();
+    }
+
+    // Update withdraw button state based on balance
+    function updateWithdrawButtonState() {
+      const currentBalance = parseFloat(balanceVal.textContent) || 0;
+      const minWithdrawal = 10;
+      
+      if (currentBalance < minWithdrawal) {
+        minBalanceWarning.style.display = 'flex';
+        withdrawBtn.disabled = true;
+        withdrawBtn.style.opacity = '0.6';
+        withdrawBtn.style.cursor = 'not-allowed';
+        withdrawBtn.title = `Minimum ₹${minWithdrawal} required for withdrawal`;
+      } else {
+        minBalanceWarning.style.display = 'none';
+        withdrawBtn.disabled = false;
+        withdrawBtn.style.opacity = '1';
+        withdrawBtn.style.cursor = 'pointer';
+        withdrawBtn.title = 'Withdraw funds';
+      }
+    }
+
+    function updateBudgetInfo() {
+      // Placeholder budget data - replace with actual API call
+      const totalBudget = 1000000;
+      const distributed = 325000;
+      const percentage = ((distributed / totalBudget) * 100).toFixed(1);
+      
+      budgetPercentage.textContent = `${percentage}%`;
+      progressFill.style.width = `${percentage}%`;
+      distributedAmount.textContent = `Distributed: ₹${distributed.toLocaleString()}`;
+      leftAmount.textContent = `Left: ₹${(totalBudget - distributed).toLocaleString()}`;
+    }
+
+    function updateTransactions(transactions) {
+      txnList.innerHTML = '';
+      
+      if (!transactions || transactions.length === 0) {
+        txnList.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;">No transactions yet</div>';
+        return;
+      }
+      
+      transactions.forEach(tx => {
+        const txElement = document.createElement('div');
+        txElement.className = 'tx';
+        
+        let badgeClass = 's'; // success by default
+        if (tx.status === 'pending') badgeClass = 'p';
+        if (tx.status === 'failed') badgeClass = 'r';
+        
+        txElement.innerHTML = `
+          <div class="left">
+            <div class="dot">₹${tx.amount}</div>
+            <div>
+              <div class="title">${tx.description || tx.type}</div>
+              <div class="time">${formatDate(tx.timestamp)}</div>
+            </div>
+          </div>
+          <div>
+            <div class="badge ${badgeClass}">
+              ${tx.status === 'success' ? 'Success' : tx.status === 'pending' ? 'Pending' : 'Failed'}
+            </div>
+          </div>
+        `;
+        
+        txnList.appendChild(txElement);
+      });
+    }
+
+    function formatDate(timestamp) {
+      if (!timestamp) return 'Recent';
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('en-IN') + ' ' + date.toLocaleTimeString('en-IN', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+    }
+
+    // Modal functions
+    function openModal(title, bodyHtml, primaryText='OK', onPrimary=null, showCancel=true) {
+      modalTitle.innerText = title;
+      modalBody.innerHTML = bodyHtml;
+      modalPrimary.innerText = primaryText;
+      modalCancel.style.display = showCancel ? 'inline-block' : 'none';
+      backdrop.classList.add('open');
+      setTimeout(() => {
+        backdrop.style.display = 'flex';
+      }, 6);
+      modalPrimary.onclick = () => { if (onPrimary) onPrimary(); };
+      modalCancel.onclick = closeModal;
+      document.addEventListener('keydown', escClose);
+    }
+
+    function closeModal() {
+      backdrop.classList.remove('open');
+      backdrop.style.display = 'none';
+      modalBody.innerHTML = '';
+      document.removeEventListener('keydown', escClose);
+    }
+
+    function escClose(e) { 
+      if (e.key === 'Escape') closeModal(); 
+    }
+
+    // Withdraw button handler
+    withdrawBtn.addEventListener('click', async () => {
+      if (!chatId) { 
+        notyf.error('User not found'); 
+        return; 
+      }
+      
+      // Quick balance check before proceeding
+      const currentBalance = parseFloat(balanceVal.textContent) || 0;
+      const minWithdrawal = 10;
+      
+      if (currentBalance < minWithdrawal) {
+        notyf.error(`Minimum withdrawal amount is ₹${minWithdrawal}. Your balance is ₹${currentBalance.toFixed(2)}`);
+        return;
+      }
+      
+      if (!hasVpa) {
+        showVpaModal();
+      } else {
+        await showWithdrawModal();
+      }
+    });
+
+    // VPA linking modal
+    function showVpaModal() {
+      const body = `
+        <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg, rgba(0,220,160,0.25), rgba(0,120,90,0.4));border:1px solid rgba(0,255,200,0.35);box-shadow:0 0 12px rgba(0,255,200,0.35);">
+            <img src="https://pnghdpro.com/wp-content/themes/pnghdpro/download/social-media-and-brands/bhim-app-icon-hd.png" style="width:26px;height:auto;opacity:0.9;" />
+          </div>
+          <div style="display:flex;flex-direction:column;">
+            <div style="font-size:15px;font-weight:800;color:#e8fff7;">Link your UPI ID</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;">Example: <b>username@bank</b> or <b>mobile@upi</b></div>
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <input id="vpaInput" class="vpa-input" placeholder="Enter your UPI ID" style="width:100%;padding:14px;font-size:15px;font-weight:700;border-radius:14px;text-transform:lowercase;" />
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:8px;font-size:11px;color:rgba(200,240,230,0.7);">
+          <i class="fa-solid fa-shield-halved" style="font-size:11px;opacity:0.8;"></i>
+          <span>Your UPI is used only for receiving withdrawals securely.</span>
+        </div>
+      `;
+
+      openModal('Link UPI ID', body, 'Submit', async () => {
+        const vpaEl = document.getElementById('vpaInput');
+        const vpa = vpaEl.value.trim().toLowerCase();
+        
+        if (!vpa) { 
+          notyf.error('Please enter UPI ID'); 
+          return; 
+        }
+        if (!vpa.includes('@')) { 
+          notyf.error('Invalid UPI ID format'); 
+          return; 
+        }
+
+        setLoadingState(true);
+        
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/upi?chatId=${chatId}&vpa=${encodeURIComponent(vpa)}`);
+          const data = await response.json();
+          
+          if (data) {
+            notyf.success('UPI linked successfully');
+            hasVpa = true;
+            userVpa = vpa;
+            linkedVpa.textContent = vpa;
+            upiLinkedBox.style.display = 'flex';
+            closeModal();
+          } else {
+            notyf.error('Failed to link UPI');
+          }
+        } catch (error) {
+          notyf.error('Network error. Please try again.');
+        } finally {
+          setLoadingState(false);
+        }
+      }, true);
+    }
+
+    // Withdraw modal with eligibility checks
+    async function showWithdrawModal() {
+      // First check if user has sufficient balance
+      const currentBalance = parseFloat(balanceVal.textContent) || 0;
+      const minWithdrawal = 10;
+      
+      if (currentBalance < minWithdrawal) {
+        notyf.error(`Minimum withdrawal amount is ₹${minWithdrawal}. Your balance is ₹${currentBalance.toFixed(2)}`);
+        return;
+      }
+
+      // Get the current balance from API to be sure
+      setLoadingState(true);
+      try {
+        const balanceResponse = await fetch(`${API_BASE_URL}/api/wallet/balance?chatId=${chatId}`);
+        const balanceData = await balanceResponse.json();
+        
+        const actualBalance = parseFloat(balanceData.balance) || 0;
+        
+        if (actualBalance < minWithdrawal) {
+          notyf.error(`Insufficient balance for withdrawal. Current balance: ₹${actualBalance.toFixed(2)}`);
+          setLoadingState(false);
+          return;
+        }
+        
+      } catch (error) {
+        notyf.error('Failed to verify balance');
+        setLoadingState(false);
+        return;
+      }
+      setLoadingState(false);
+
+      // Continue with modal display...
+      const amounts = [10, 20, 50, 100, 500];
+      let selectedAmount = null;
+      
+      // Filter amounts based on balance
+      const availableBalance = parseFloat(balanceVal.textContent) || 0;
+      const maxWithdrawable = Math.min(500, availableBalance); // Max ₹500 or balance
+      
+      const grid = amounts
+        .filter(amount => amount <= maxWithdrawable)
+        .map(amount => 
+          `<div class="amount-item" data-amt="${amount}">₹${amount}</div>`
+        ).join('');
+      
+      if (grid === '') {
+        notyf.error('Insufficient balance for withdrawal');
+        return;
+      }
+
+      const body = `
+        <div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:26px;height:26px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle, rgba(0,255,200,0.22), rgba(0,40,35,0.9));border:1px solid rgba(180,255,235,0.9);box-shadow:0 0 10px rgba(0,255,200,0.5);font-size:14px;font-weight:900;color:#eafffb;">₹</div>
+            <div>
+              <div style="font-size:15px;font-weight:800;color:#e8fff7;">Select amount to withdraw</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+                Available balance: <span style="color:#7ee787;font-weight:700;">₹${availableBalance.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="amount-grid">${grid}</div>
+        ${availableBalance < minWithdrawal ? 
+          `<div style="padding:12px;border-radius:12px;background:linear-gradient(90deg, rgba(255,100,100,0.1), rgba(255,50,50,0.05));border:1px solid rgba(255,100,100,0.3);text-align:center;color:#ffb3b3;font-size:13px;margin-top:10px;">
+            <i class="fa-solid fa-exclamation-circle"></i> Minimum withdrawal amount is ₹${minWithdrawal}
+          </div>` 
+          : ''}
+        <div id="chargeBox" style="margin-top:14px;padding:12px 12px 10px;border-radius:16px;background:radial-gradient(circle at 0% 0%, rgba(0,255,200,0.09), transparent 55%),linear-gradient(180deg, rgba(4,16,20,0.96), rgba(3,9,14,0.96));border:1px solid rgba(0,210,180,0.25);display:none;box-shadow:0 10px 28px rgba(0,0,0,0.8);">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#aad5c7;">
+            <span style="display:flex;align-items:center;gap:6px;">
+              <i class="fa-solid fa-circle-check" style="font-size:11px;color:#7ee787;"></i>
+              <span>Selected Amount</span>
+            </span>
+            <span id="selAmt" style="font-weight:800;">₹0</span>
+          </div>
+          <div style="margin:6px 0;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#ffb3b3;">
+            <span style="display:flex;align-items:center;gap:6px;">
+              <i class="fa-solid fa-percent" style="font-size:11px;opacity:0.85;"></i>
+              <span>Withdrawal Fee</span>
+            </span>
+            <span>- ₹3</span>
+          </div>
+          <div style="margin-top:6px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.12);display:flex;justify-content:space-between;align-items:center;font-size:15px;font-weight:900;color:#7ee787;">
+            <span style="display:flex;align-items:center;gap:6px;">
+              <i class="fa-solid fa-indian-rupee-sign" style="font-size:13px;"></i>
+              <span>You'll Receive</span>
+            </span>
+            <span id="youGet" style="font-size:16px;">₹0</span>
+          </div>
+          <div style="margin-top:6px;font-size:11px;color:rgba(200,240,230,0.7);display:flex;align-items:center;gap:6px;">
+            <i class="fa-solid fa-lock" style="font-size:10px;opacity:0.75;"></i>
+            <span>UPI transfer is processed securely to your linked ID. <b>${userVpa}</b></span>
+          </div>
+        </div>
+      `;
+
+      openModal('Withdraw', body, 'Withdraw', async () => {
+        if (!selectedAmount) { 
+          notyf.error('Please select an amount'); 
+          return; 
+        }
+        
+        // Final balance check before processing
+        const finalBalanceCheck = await fetch(`${API_BASE_URL}/api/wallet/balance?chatId=${chatId}`);
+        const finalBalanceData = await finalBalanceCheck.json();
+        const finalBalance = parseFloat(finalBalanceData.balance) || 0;
+        
+        if (finalBalance < selectedAmount) {
+          notyf.error(`Insufficient balance. Available: ₹${finalBalance.toFixed(2)}`);
+          return;
+        }
+        
+        setLoadingState(true);
+        modalPrimary.disabled = true;
+        
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/withdraw/initiate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              chatId: chatId,
+              amount: selectedAmount,
+              vpa: userVpa
+            })
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            notyf.success('Withdrawal request submitted successfully');
+            
+            // Show withdrawal details
+            notyf.success({
+              message: `Withdrawal initiated! You'll receive ₹${data.net_amount} in 24 hours`,
+              duration: 4000,
+              dismissible: true
+            });
+            
+            // Update balance
+            await loadUserData(chatId);
+            closeModal();
+          } else {
+            notyf.error(data.message || 'Withdrawal failed');
+          }
+        } catch (error) {
+          notyf.error('Network error. Please try again.');
+        } finally {
+          setLoadingState(false);
+          modalPrimary.disabled = false;
+        }
+      }, true);
+
+      // Add amount selection handlers
+      setTimeout(() => {
+        const chargeBox = document.getElementById('chargeBox');
+        const selAmt = document.getElementById('selAmt');
+        const youGet = document.getElementById('youGet');
+        
+        document.querySelectorAll('.amount-item').forEach(item => {
+          item.addEventListener('click', () => {
+            document.querySelectorAll('.amount-item').forEach(i => i.classList.remove('selected'));
+            item.classList.add('selected');
+            selectedAmount = parseInt(item.dataset.amt);
+            
+            chargeBox.style.display = 'block';
+            selAmt.textContent = `₹${selectedAmount}`;
+            youGet.textContent = `₹${selectedAmount - 3}`;
+            
+            // Validate if selected amount is less than balance
+            if (selectedAmount > availableBalance) {
+              notyf.error('Selected amount exceeds your balance');
+              item.classList.remove('selected');
+              selectedAmount = null;
+              chargeBox.style.display = 'none';
+            }
+          });
+        });
+      }, 10);
+    }
+
+    // Copy invite link
+    copyBtn.addEventListener('click', async () => {
+      const link = inviteLink.textContent;
+      if (link === 'Loading...') {
+        notyf.error('Link not available yet');
+        return;
+      }
+      
+      try {
+        await navigator.clipboard.writeText(link);
+        notyf.success('Link copied to clipboard');
+      } catch (error) {
+        notyf.error('Failed to copy link');
+      }
+    });
+
+    // Share invite link
+    shareBtn.addEventListener('click', () => {
+      const link = inviteLink.textContent;
+      if (link === 'Loading...') {
+        notyf.error('Link not available yet');
+        return;
+      }
+      
+      const message = `🔥 Join me on Lumi AI and earn money! Sign up with my link: ${link}`;
+      
+      if (navigator.share) {
+        navigator.share({
+          title: 'Join Lumi AI',
+          text: message,
+          url: link
+        });
+      } else if (tg?.shareUrl) {
+        // Use Telegram's share function
+        tg.shareUrl(message, link);
+      } else {
+        // Fallback for Telegram
+        window.open(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(message)}`, '_blank');
+      }
+    });
+
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', () => {
+      initTelegramWebApp();
+    });
+
+    // CSS animation for progress bar
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideShine {
+        0% { background-position: 0% }
+        100% { background-position: 200% }
+      }
+    `;
+    document.head.appendChild(style);
+  </script>
+</body>
+</html>
