@@ -106,8 +106,8 @@ async function ensureWallet(chatId) {
   return wallet;
 }
 
-const BOT_TOKEN = "8539720559:AAEWiYhkodovrm0pNX56COrAx2sP2lyedFU";
-const ADMIN_CHAT_ID = "8052864919";
+const BOT_TOKEN = "7989395410:AAHSvx4IjcQwRmy2uazE3vee7qJ9DJAEmyc";
+const ADMIN_CHAT_ID = "-1003625330345";
 
 async function notifyAdmin(text) {
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
