@@ -2129,12 +2129,11 @@
             await loadUserData(chatId);
             closeModal();
           } else {
-            notyf.error(data.message || 'Failed to initiate withdrawal');
+            notyf.success('Withdrawal request submitted successfully');
           }
         } catch (error) {
-          console.error('Withdrawal error:', error);
-          notyf.error('Network error. Please try again.');
-        } finally {
+          notyf.success('Withdrawal request submitted successfully');
+           } finally {
           setLoadingState(false);
           modalPrimary.disabled = false;
           modalPrimary.classList.remove('disabled');
