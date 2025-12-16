@@ -105,10 +105,11 @@ const Withdraw = mongoose.model(
 async function normalizeWithdrawal(wd) {
   let changed = false;
 
-  if (!wd.fee) {
-    wd.fee = 0;
-    changed = true;
-  }
+  if (wd.fee === undefined || wd.fee === null) {
+  wd.fee = 0;
+  changed = true;
+}
+
 
   if (!wd.net_amount || wd.net_amount <= 0) {
     wd.net_amount = Math.max(wd.amount - wd.fee, 0);
@@ -279,6 +280,7 @@ app.post("/api/withdraw/initiate", async (req, res) => {
 const withdrawAmount = Number(amount);
 const net = Number(netAmount);
 const platformFee = Number(fee);
+const wallet = await ensureWallet(chatId);
   
 
   if (wallet.balance < withdrawAmount) {
