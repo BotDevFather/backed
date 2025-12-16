@@ -1,6 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
+import fetch from "node-fetch";
 
 const app = express();
 app.use(express.json());
@@ -11,7 +12,8 @@ app.use(cors());
 // ---------------------
 const MONGO_URI = process.env.MONGO_URI;
 await mongoose.connect(MONGO_URI, {});
-
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
+const BOT_TOKEN = process.env.BOT_TOKEN;
 // ---------------------
 // SCHEMAS
 // ---------------------
@@ -100,14 +102,48 @@ const Withdraw = mongoose.model(
 // ---------------------
 // Helper Functions
 // ---------------------
+async function normalizeWithdrawal(wd) {
+  let changed = false;
+
+  if (!wd.fee) {
+    wd.fee = 0;
+    changed = true;
+  }
+
+  if (!wd.net_amount || wd.net_amount <= 0) {
+    wd.net_amount = Math.max(wd.amount - wd.fee, 0);
+    changed = true;
+  }
+
+  if (!["pending", "completed", "rejected"].includes(wd.status)) {
+    wd.status = "pending";
+    changed = true;
+  }
+
+  if (changed) await wd.save();
+  return wd;
+}
+
 async function ensureWallet(chatId) {
   let wallet = await Wallet.findOne({ chatId });
   if (!wallet) wallet = await Wallet.create({ chatId });
   return wallet;
 }
 
-const BOT_TOKEN = "7989395410:AAHOiN9zGYBCGww1-JFrXLrlV5rRdap_J3U";
-const ADMIN_CHAT_ID = "-1003625330345";
+async function sendUPIPayout(amount, vpa, info) {
+  const url =
+    `https://full2sms.in/api/v2/payout` +
+    `?mid=${process.env.FULL2SMS_MID}` +
+    `&mkey=${process.env.FULL2SMS_MKEY}` +
+    `&guid=${process.env.FULL2SMS_GUID}` +
+    `&type=upi` +
+    `&amount=${amount}` +
+    `&upi=${vpa}` +
+    `&info=${encodeURIComponent(info)}`;
+
+  const res = await fetch(url);
+  return await res.json();
+}
 
 async function notifyAdmin(text) {
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
@@ -238,16 +274,12 @@ app.get("/api/upi", async (req, res) => {
 // 4. WITHDRAWAL (DEDUCT + FORMATTED NOTIFICATIONS)
 // ----------------------------------------------
 app.post("/api/withdraw/initiate", async (req, res) => {
-  const { chatId, amount, vpa } = req.body;
+  const { chatId, amount, netAmount, fee, vpa } = req.body;
 
-  if (!chatId || !amount || !vpa)
-    return res.status(400).json({ error: "chatId, amount & vpa required" });
-
-  const wallet = await ensureWallet(chatId);
-
-  const withdrawAmount = Number(amount);
-  const fee = 3.0;
-  const net = withdrawAmount - fee;
+const withdrawAmount = Number(amount);
+const net = Number(netAmount);
+const platformFee = Number(fee);
+  
 
   if (wallet.balance < withdrawAmount) {
     return res.json({ error: "Insufficient balance" });
@@ -257,14 +289,15 @@ app.post("/api/withdraw/initiate", async (req, res) => {
   await wallet.save();
 
   const wd = await Withdraw.create({
-    chatId,
-    amount: withdrawAmount,
-    vpa,
-    fee,
-    net_amount: net,
-    status: "pending",
-    initiated_at: new Date()
-  });
+  chatId,
+  amount: withdrawAmount,
+  fee: platformFee,
+  net_amount: net,
+  vpa,
+  status: "pending",
+  initiated_at: new Date()
+});
+  
 
   // Create transaction
   await Txn.create({
@@ -472,22 +505,31 @@ app.get("/api/withdraw/history", async (req, res) => {
 // ADMIN: UPDATE WITHDRAW STATUS (GET)
 // ----------------------------------------------
 app.get("/api/withdraw/update", async (req, res) => {
-  const { id, status, transaction_id, failure_reason } = req.query;
+  const { id, status, failure_reason } = req.query;
 
-  if (!id || !status) {
-    return res.status(400).json({ error: "id and status required" });
-  }
+  let wd = await Withdraw.findById(id);
+  if (!wd) return res.json({ error: "Not found" });
 
-  const wd = await Withdraw.findById(id);
-  if (!wd || wd.status !== "pending") {
-    return res.json({ error: "Invalid or already processed withdrawal" });
-  }
+  wd = await normalizeWithdrawal(wd);
 
-  // ---------------- COMPLETED ----------------
+  if (wd.status !== "pending")
+    return res.json({ error: "Already processed" });
+
+  // ✅ APPROVE
   if (status === "completed") {
+    const payout = await sendUPIPayout(
+      wd.net_amount,
+      wd.vpa,
+      `Withdrawal ${wd._id}`
+    );
+
+    if (payout.status !== "success") {
+      return res.json({ error: "Payout failed" });
+    }
+
     wd.status = "completed";
     wd.completed_at = new Date();
-    wd.transaction_id = transaction_id || `TXN_${Date.now()}`;
+    wd.transaction_id = payout.txn_id;
 
     await Txn.updateOne(
       { "metadata.withdrawal_id": wd._id },
@@ -496,20 +538,14 @@ app.get("/api/withdraw/update", async (req, res) => {
 
     await notifyUser(
       wd.chatId,
-      `Withdrawal of ₹${wd.amount} has been completed.\n` +
-      `Amount credited to your UPI ${wd.vpa}.\n` +
-      `Txn id: ${wd.transaction_id}`
+      `✅ Withdrawal Successful\n₹${wd.net_amount} sent\nTxn ID: ${wd.transaction_id}`
     );
   }
 
-  // ---------------- REJECTED ----------------
+  // ❌ REJECT (NO REFUND)
   if (status === "rejected") {
     wd.status = "rejected";
-    wd.failure_reason = failure_reason || "Rejected by admin";
-
-    const wallet = await ensureWallet(wd.chatId);
-    wallet.balance += wd.amount;
-    await wallet.save();
+    wd.failure_reason = failure_reason || "Policy Violation";
 
     await Txn.updateOne(
       { "metadata.withdrawal_id": wd._id },
@@ -518,19 +554,12 @@ app.get("/api/withdraw/update", async (req, res) => {
 
     await notifyUser(
       wd.chatId,
-      `Withdrawal of ₹${wd.amount} was rejected.\n` +
-      `Reason: ${wd.failure_reason}\n` +
-      `Amount has been refunded to your wallet.`
+      `❌ Withdrawal Rejected\nReason: ${wd.failure_reason}\n\n⚠️ Amount forfeited`
     );
   }
 
   await wd.save();
-
-  res.json({
-    success: true,
-    id: wd._id,
-    status: wd.status
-  });
+  res.json({ success: true });
 });
 
 // ----------------------------------------------
