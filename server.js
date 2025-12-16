@@ -95,13 +95,31 @@ const Withdraw = mongoose.model(
     initiated_at: Date,
     completed_at: Date,
     transaction_id: String,
-    failure_reason: String
+    failure_reason: String,
+    admin_message_id: Number
+    
   })
 );
 
 // ---------------------
 // Helper Functions
 // ---------------------
+async function deleteAdminMessage(messageId) {
+  if (!messageId) return;
+
+  const url = `https://api.telegram.org/bot${process.env.BOT_TOKEN}/deleteMessage`;
+
+  await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: process.env.ADMIN_CHAT_ID,
+      message_id: messageId
+    })
+  });
+}
+
+
 async function normalizeWithdrawal(wd) {
   let changed = false;
 
@@ -146,14 +164,24 @@ async function sendUPIPayout(amount, vpa, info) {
   return await res.json();
 }
 
-async function notifyAdmin(text) {
-  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-  await fetch(url, {
+async function notifyAdminWithButtons(text, buttons) {
+  const url = `https://api.telegram.org/bot${process.env.BOT_TOKEN}/sendMessage`;
+
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: ADMIN_CHAT_ID, text, parse_mode: "HTML" })
+    body: JSON.stringify({
+      chat_id: process.env.ADMIN_CHAT_ID,
+      text,
+      parse_mode: "HTML",
+      reply_markup: { inline_keyboard: buttons }
+    })
   });
+
+  const data = await res.json();
+  return data.result.message_id; // 🔥 IMPORTANT
 }
+
 
 async function notifyUser(chatId, text) {
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
@@ -317,7 +345,7 @@ const wallet = await ensureWallet(chatId);
     `Withdrawal of ₹${withdrawAmount} has been requested.It will be credited to your UPI ${vpa} soon. (Txn id: withdrawal ${wd._id})`);
 
   // Notify admin
-  await notifyAdminWithButtons(
+  const adminMsgId = await notifyAdminWithButtons(
   `🛑 <b>New Withdrawal Request</b>\n\n` +
   `User: <code>${chatId}</code>\n` +
   `Amount: ₹${withdrawAmount}\n` +
@@ -327,17 +355,21 @@ const wallet = await ensureWallet(chatId);
     [
       {
         text: "✅ Approve",
-        url: `https://backed-nu.vercel.app/api/withdraw/update?id=${wd._id}&status=completed&transaction_id=UPI_TXN_${Date.now()}`
+        url: `https://yourdomain/api/withdraw/update?id=${wd._id}&status=completed`
       }
     ],
     [
       {
         text: "❌ Reject",
-        url: `https://backed-nu.vercel.app/api/withdraw/update?id=${wd._id}&status=rejected&failure_reason=Invalid%20UPI%20ID`
+        url: `https://yourdomain/api/withdraw/update?id=${wd._id}&status=rejected`
       }
     ]
   ]
 );
+
+wd.admin_message_id = adminMsgId;
+await wd.save();
+  
 
 
   res.json({
@@ -542,6 +574,7 @@ app.get("/api/withdraw/update", async (req, res) => {
       wd.chatId,
       `✅ Withdrawal Successful\n₹${wd.net_amount} sent\nTxn ID: ${wd.transaction_id}`
     );
+    await deleteAdminMessage(wd.admin_message_id);
   }
 
   // ❌ REJECT (NO REFUND)
@@ -561,8 +594,9 @@ app.get("/api/withdraw/update", async (req, res) => {
   }
 
   await wd.save();
+  await deleteAdminMessage(wd.admin_message_id);
   res.json({ success: true });
 });
-
+ 
 // ----------------------------------------------
 export default app;
