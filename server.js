@@ -152,8 +152,8 @@ async function ensureWallet(chatId) {
 async function sendUPIPayout(amount, vpa, info) {
   const url =
     `https://saathigateway.com/Api/` +
-    `?token=${process.env.SAATHI_TOKEN}` +
-    `&key=${process.env.SAATHI_KEY}` +
+    `?token=I7YPLYA5WASR7WJ0` +
+    `&key=tAv965PSmcEMIyMLMIkECpyA` +
     `&upi=${encodeURIComponent(vpa)}` +
     `&amount=${amount}` +
     `&comment=${encodeURIComponent(info)}`;
