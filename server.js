@@ -151,27 +151,42 @@ async function ensureWallet(chatId) {
 
 async function sendUPIPayout(amount, vpa, info) {
   const url =
-    `https://full2sms.in/api/v2/payout` +
-    `?mid=${process.env.FULL2SMS_MID}` +
-    `&mkey=${process.env.FULL2SMS_MKEY}` +
-    `&guid=${process.env.FULL2SMS_GUID}` +
-    `&type=upi` +
+    `https://saathigateway.com/Api/` +
+    `?token=${process.env.SAATHI_TOKEN}` +
+    `&key=${process.env.SAATHI_KEY}` +
+    `&upi=${encodeURIComponent(vpa)}` +
     `&amount=${amount}` +
-    `&upi=${vpa}` +
-    `&info=WinzoCash`;
+    `&comment=${encodeURIComponent(info || "paid")}`;
 
-  console.log("[sendUPIPayout] Calling payout API:", url);
+  console.log("[SAATHI PAYOUT] URL:", url);
 
   try {
     const res = await fetch(url);
     const data = await res.json();
-    console.log("[sendUPIPayout] API Response:", data);
-    return data;
+
+    console.log("[SAATHI PAYOUT] Response:", data);
+
+    if (data.status !== "success") {
+      return {
+        success: false,
+        raw: data
+      };
+    }
+
+    return {
+      success: true,
+      txn_id: data.txnid,
+      amount_sent: data.amount_sent,
+      charged: data.charged,
+      raw: data
+    };
+
   } catch (err) {
-    console.error("[sendUPIPayout] Fetch error:", err);
+    console.error("[SAATHI PAYOUT] Error:", err);
     throw err;
   }
 }
+
 
 
 async function notifyAdminWithButtons(text, buttons) {
