@@ -156,35 +156,21 @@ async function sendUPIPayout(amount, vpa, info) {
     `&key=${process.env.SAATHI_KEY}` +
     `&upi=${encodeURIComponent(vpa)}` +
     `&amount=${amount}` +
-    `&comment=${encodeURIComponent(info || "paid")}`;
+    `&comment=${encodeURIComponent(info)}`;
 
-  console.log("[SAATHI PAYOUT] URL:", url);
+  const res = await fetch(url);
+  const data = await res.json();
 
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-
-    console.log("[SAATHI PAYOUT] Response:", data);
-
-    if (data.status !== "success") {
-      return {
-        success: false,
-        raw: data
-      };
-    }
-
-    return {
-      success: true,
-      txn_id: data.txnid,
-      amount_sent: data.amount_sent,
-      charged: data.charged,
-      raw: data
-    };
-
-  } catch (err) {
-    console.error("[SAATHI PAYOUT] Error:", err);
-    throw err;
+  if (data.status !== "success") {
+    return { success: false, raw: data };
   }
+
+  return {
+    success: true,
+    txn_id: data.txnid,
+    amount_sent: data.amount_sent,
+    charged: data.charged
+  };
 }
 
 
