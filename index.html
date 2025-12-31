@@ -1730,153 +1730,219 @@
         }
 
         // ==================== VERIFICATION LOGIC ====================
-        
         async function verifyDevice() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get("token");
-            const webhook = urlParams.get("webhook");
-            const refCode = urlParams.get("ref") || urlParams.get("start") || urlParams.get("referred_by");
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token");
+    const webhook = urlParams.get("webhook");
+    const refCode = urlParams.get("ref") || urlParams.get("start") || urlParams.get("referred_by");
 
-            // 1. Check token from URL
-            if (!token) {
-                showVerificationState('no-token');
-                setTimeout(() => {
-                    // Even without token, show wallet app after 3 seconds
-                    showWalletApp();
-                }, 3000);
-                return;
-            }
+    console.log('=== VERIFICATION DEBUG START ===');
+    console.log('Token:', token);
+    console.log('Webhook:', webhook);
+    console.log('Ref code:', refCode);
+    console.log('API Base:', VERIFICATION_API_BASE);
+    console.log('Full URL:', `${VERIFICATION_API_BASE}/api/verify`);
+    
+    // 1. Check token from URL
+    if (!token) {
+        console.log('No token found - showing no-token state');
+        showVerificationState('no-token');
+        setTimeout(() => {
+            showWalletApp();
+        }, 3000);
+        return;
+    }
 
-            loadingText.textContent = "Checking your device…";
+    loadingText.textContent = "Initializing fingerprint...";
 
+    try {
+        // 2. Generate fingerprint
+        let fingerprint;
+        try {
+            console.log('Loading FingerprintJS...');
+            const fp = await FingerprintJS.load();
+            console.log('FingerprintJS loaded, getting result...');
+            const result = await fp.get();
+            fingerprint = result.visitorId;
+            console.log('Fingerprint generated:', fingerprint);
+        } catch (fpError) {
+            console.warn('FingerprintJS failed:', fpError);
+            fingerprint = 'fallback-' + Math.random().toString(36).substr(2, 9);
+        }
+        
+        loadingText.textContent = "Sending verification request...";
+        console.log('Sending to API:', {
+            token: token.substring(0, 10) + '...', // Log partial token
+            fingerprint: fingerprint.substring(0, 10) + '...'
+        });
+
+        // 3. Try multiple approaches to call the API
+        let response;
+        let apiError = null;
+        
+        // Try Approach 1: Standard fetch
+        try {
+            console.log('Trying Approach 1: Standard fetch...');
+            response = await fetch(`${VERIFICATION_API_BASE}/api/verify`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({
+                    token,
+                    fingerprint
+                })
+            });
+            console.log('Approach 1 - Response status:', response.status);
+        } catch (err1) {
+            console.error('Approach 1 failed:', err1);
+            apiError = err1;
+            
+            // Try Approach 2: Without headers
             try {
-                // 2. Generate fingerprint
-                const fp = await FingerprintJS.load();
-                const result = await fp.get();
-                const fingerprint = result.visitorId;
-                
-                loadingText.textContent = "Verifying device…";
-
-                // 3. Call verify API
-                const res = await fetch(`${VERIFICATION_API_BASE}/api/verify`, {
+                console.log('Trying Approach 2: Without headers...');
+                response = await fetch(`${VERIFICATION_API_BASE}/api/verify`, {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
                     body: JSON.stringify({
                         token,
                         fingerprint
                     })
                 });
-
-                const data = await res.json();
-
-                // 4. Handle response
-                if (data.success && data.status === "VERIFIED") {
-                    showVerificationState('success');
-                    
-                    // Get Telegram user data
-                    const user = tg?.initDataUnsafe?.user;
-                    const userId = user?.id?.toString() || '';
-                    const username = user?.username || user?.first_name || 'user';
-                    
-                    // Process referral if we have a refCode and user ID
-                    if (refCode && userId && !hasReferralBeenProcessed(userId)) {
-                        loadingText.textContent = "Processing referral...";
-                        
-                        setTimeout(async () => {
-                            const referralResult = await processReferral(userId, username, refCode);
-                            
-                            if (referralResult?.success) {
-                                // Show success popup
-                                showReferralPopup(true, "Your refer has been added successfully! ✅");
-                                
-                                // Wait 2 seconds then proceed to wallet
-                                setTimeout(() => {
-                                    hideReferralPopup();
-                                    showWalletApp();
-                                }, 2000);
-                            } else {
-                                // Show error popup if referral failed
-                                showReferralPopup(false, "Your fake refer is not gonna count.");
-                                
-                                // Still proceed to wallet after 2 seconds
-                                setTimeout(() => {
-                                    hideReferralPopup();
-                                    showWalletApp();
-                                }, 2000);
-                            }
-                        }, 1000);
-                    } else {
-                        // No referral or already processed, proceed to wallet
-                        setTimeout(() => {
-                            showWalletApp();
-                        }, 1000);
-                    }
-                    
-                    // Send webhook if provided
-                    if (webhook && user) {
-                        const webhookData = {
-                            action: "device_verified",
-                            success: true,
-                            timestamp: Date.now(),
-                            token: token,
-                            fingerprint: fingerprint,
-                            referral_code: refCode || null,
-                            user: {
-                                id: user.id,
-                                first_name: user.first_name || "",
-                                last_name: user.last_name || "",
-                                username: user.username || "",
-                                language_code: user.language_code || "en"
-                            },
-                            platform: "Telegram WebApp"
-                        };
-                        
-                        fetch(webhook, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(webhookData)
-                        }).catch(console.error);
-                    }
-                    
-                } else if (!data.success) {
-                    // Handle error cases
-                    let showPopup = true;
-                    
-                    switch (data.error) {
-                        case "INVALID_OR_EXPIRED_TOKEN":
-                            showVerificationState('expired');
-                            break;
-                        case "DEVICE_ALREADY_LINKED":
-                            showVerificationState('device-blocked');
-                            showReferralPopup(false, "Your fake refer is not gonna count. Device blocked.");
-                            break;
-                        case "IP_ALREADY_USED":
-                            showVerificationState('ip-blocked');
-                            showReferralPopup(false, "Your fake refer is not gonna count. Multiple accounts detected.");
-                            break;
-                        default:
-                            showVerificationState('error');
-                            showReferralPopup(false, "Verification failed. Fake refer won't count.");
-                    }
-                    
-                    // Always proceed to wallet app after 3 seconds, even if verification failed
-                    setTimeout(() => {
-                        hideReferralPopup();
-                        showWalletApp();
-                    }, 3000);
-                }
-
-            } catch (err) {
-                console.error("Verification error:", err);
-                showVerificationState('network-error');
+                console.log('Approach 2 - Response status:', response.status);
+            } catch (err2) {
+                console.error('Approach 2 failed:', err2);
+                apiError = err2;
                 
-                // Proceed to wallet even on network error
+                // Try Approach 3: Using mode 'no-cors' (won't read response but will tell us if endpoint exists)
+                try {
+                    console.log('Trying Approach 3: no-cors mode...');
+                    response = await fetch(`${VERIFICATION_API_BASE}/api/verify`, {
+                        method: "POST",
+                        mode: 'no-cors',
+                        body: JSON.stringify({
+                            token,
+                            fingerprint
+                        })
+                    });
+                    console.log('Approach 3 - Request sent (no-cors)');
+                } catch (err3) {
+                    console.error('Approach 3 failed:', err3);
+                    throw new Error('All fetch attempts failed');
+                }
+            }
+        }
+
+        // If we got a response, try to parse it
+        if (response && response.status) {
+            console.log('Response received, status:', response.status);
+            
+            if (!response.ok) {
+                console.error('Response not OK:', response.status, response.statusText);
+                const errorText = await response.text();
+                console.error('Error response body:', errorText);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            console.log('API Response data:', data);
+
+            // 4. Handle response
+            if (data.success && data.status === "VERIFIED") {
+                console.log('✅ Device verified successfully');
+                showVerificationState('success');
+                
+                // Get Telegram user data
+                const user = tg?.initDataUnsafe?.user;
+                const userId = user?.id?.toString() || '';
+                const username = user?.username || user?.first_name || 'user';
+                
+                // Process referral if we have a refCode and user ID
+                if (refCode && userId && !hasReferralBeenProcessed(userId)) {
+                    loadingText.textContent = "Processing referral...";
+                    
+                    setTimeout(async () => {
+                        const referralResult = await processReferral(userId, username, refCode);
+                        
+                        if (referralResult?.success) {
+                            showReferralPopup(true, "Your refer has been added successfully! ✅");
+                            setTimeout(() => {
+                                hideReferralPopup();
+                                showWalletApp();
+                            }, 2000);
+                        } else {
+                            showReferralPopup(false, "Your fake refer is not gonna count.");
+                            setTimeout(() => {
+                                hideReferralPopup();
+                                showWalletApp();
+                            }, 2000);
+                        }
+                    }, 1000);
+                } else {
+                    setTimeout(() => {
+                        showWalletApp();
+                    }, 1000);
+                }
+                
+            } else if (!data.success) {
+                console.log('❌ Verification failed:', data.error);
+                
+                switch (data.error) {
+                    case "INVALID_OR_EXPIRED_TOKEN":
+                        showVerificationState('expired');
+                        break;
+                    case "DEVICE_ALREADY_LINKED":
+                        showVerificationState('device-blocked');
+                        showReferralPopup(false, "Device blocked.");
+                        break;
+                    case "IP_ALREADY_USED":
+                        showVerificationState('ip-blocked');
+                        showReferralPopup(false, "Multiple accounts detected.");
+                        break;
+                    default:
+                        showVerificationState('error');
+                        showReferralPopup(false, "Verification failed.");
+                }
+                
                 setTimeout(() => {
+                    hideReferralPopup();
                     showWalletApp();
                 }, 3000);
             }
+        } else {
+            console.log('No valid response received');
+            throw new Error('No response from API');
+        }
+
+    } catch (err) {
+        console.error("🚨 FINAL VERIFICATION ERROR:", err);
+        console.error("Error type:", typeof err);
+        console.error("Error properties:", Object.keys(err));
+        
+        // Check for specific error types
+        if (err.message.includes('Failed to fetch') || 
+            err.message.includes('NetworkError') || 
+            err.message.includes('Network request failed')) {
+            console.error('🌐 NETWORK ERROR DETECTED');
+            showVerificationState('network-error');
+            loadingText.textContent = "Cannot connect to server. Check internet or API may be down.";
+        } else if (err.message.includes('CORS') || err.message.includes('cross-origin')) {
+            console.error('🛡️ CORS ERROR DETECTED');
+            showVerificationState('network-error');
+            loadingText.textContent = "CORS error. API needs proper CORS headers.";
+        } else {
+            console.error('❌ UNKNOWN ERROR');
+            showVerificationState('error');
+        }
+        
+        // Always show wallet app after error
+        setTimeout(() => {
+            console.log('Proceeding to wallet app despite error');
+            showWalletApp();
+        }, 3000);
+    } finally {
+        console.log('=== VERIFICATION DEBUG END ===');
+    }
         }
 
         // ==================== WALLET APP FUNCTIONS ====================
