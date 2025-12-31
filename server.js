@@ -149,30 +149,53 @@ async function ensureWallet(chatId) {
   return wallet;
 }
 
-async function sendUPIPayout(amount, vpa, info) {
+async function sendUPIPayout(amount, vpa, info = "paid") {
   const url =
-    `https://saathigateway.com/Api/` +
-    `?token=I7YPLYA5WASR7WJ0` +
-    `&key=tAv965PSmcEMIyMLMIkECpyA` +
-    `&upi=${encodeURIComponent(vpa)}` +
+    `https://vsv-gateway-solutions.co.in/Api/upi.php` +
+    `?token=MOEWSYRT` +
+    `&upi_id=${encodeURIComponent(vpa)}` +
     `&amount=10` +
     `&comment=paid`;
 
-  const res = await fetch(url);
-  const data = await res.json();
+  console.log("[VSV PAYOUT] URL:", url);
 
-  if (data.status !== "success") {
-    return { success: false, raw: data };
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+
+    console.log("[VSV PAYOUT] Response:", data);
+
+    /*
+      Expected response:
+      {
+        status: "success",
+        orderid: 9653414,
+        txn_status: "completed"
+      }
+    */
+
+    // ✅ STRICT SUCCESS CHECK
+    if (
+      data.status !== "success" ||
+      data.txn_status !== "completed"
+    ) {
+      return {
+        success: false,
+        raw: data
+      };
+    }
+
+    return {
+      success: true,
+      txn_id: data.orderid,
+      raw: data
+    };
+
+  } catch (err) {
+    console.error("[VSV PAYOUT] Error:", err);
+    throw err;
   }
-
-  return {
-    success: true,
-    txn_id: data.txnid,
-    amount_sent: data.amount_sent,
-    charged: data.charged
-  };
 }
-
 
 
 async function notifyAdminWithButtons(text, buttons) {
