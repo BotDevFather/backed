@@ -149,66 +149,29 @@ async function ensureWallet(chatId) {
   return wallet;
 }
 
-async function sendUPIPayout(amount, vpa, info = "paid") {
+async function sendUPIPayout(amount, vpa, info) {
   const url =
-    `https://vsv-gateway-solutions.co.in/Api/upi.php` +
-    `?token=MOEWSYRT` +
-    `&upi_id=${encodeURIComponent(vpa)}` +
+    `https://saathigateway.com/Api/` +
+    `?token=I7YPLYA5WASR7WJ0` +
+    `&key=tAv965PSmcEMIyMLMIkECpyA` +
+    `&upi=${encodeURIComponent(vpa)}` +
     `&amount=10` +
     `&comment=paid`;
 
-  console.log("[VSV PAYOUT] URL:", url);
+  const res = await fetch(url);
+  const data = await res.json();
 
-  try {
-    const res = await fetch(url);
-
-    // 🔴 READ RAW TEXT FIRST
-    const rawText = await res.text();
-    console.log("[VSV PAYOUT] RAW RESPONSE:", rawText);
-
-    // 🟢 EXTRACT JSON ONLY
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("Invalid gateway response (no JSON found)");
-    }
-
-    const data = JSON.parse(jsonMatch[0]);
-
-    console.log("[VSV PAYOUT] PARSED JSON:", data);
-
-    /*
-      Expected:
-      {
-        status: "success",
-        orderid: 9653414,
-        txn_status: "completed"
-      }
-    */
-
-    if (
-      data.status !== "success" ||
-      data.txn_status !== "completed"
-    ) {
-      return {
-        success: false,
-        raw: data
-      };
-    }
-
-    return {
-      success: true,
-      txn_id: data.orderid,
-      raw: data
-    };
-
-  } catch (err) {
-    console.error("[VSV PAYOUT] Error:", err);
-    throw err;
+  if (data.status !== "success") {
+    return { success: false, raw: data };
   }
-      }
 
-
-        
+  return {
+    success: true,
+    txn_id: data.txnid,
+    amount_sent: data.amount_sent,
+    charged: data.charged
+  };
+}
 
 
 async function notifyAdminWithButtons(text, buttons) {
