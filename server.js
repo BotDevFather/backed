@@ -21,9 +21,9 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 // Every user must join ALL of these before accessing the app.
 // ---------------------
 export const REQUIRED_CHANNELS = [
-  { name: "Cash Hungama",   link: "https://t.me/cashhungama",   username: "cashhungama"   },
-  { name: "Earn Daily",     link: "https://t.me/earndaily",     username: "earndaily"     },
-  { name: "Refer & Win",    link: "https://t.me/referandwin",   username: "referandwin"   },
+  { name: "Join 1",   link: "https://t.me/+wxVjfol5y-9mODQ9",   username: "cashhungama"   },
+  { name: "Join 2",     link: "https://t.me/+NxHKX1IDRgg5ZDY1",     username: "earndaily"     },
+  { name: "Join 3",    link: "https://t.me/+1NkfO3yeXQ82ZmE1",   username: "referandwin"   },
   // Add more channels here:
   // { name: "My Channel", link: "https://t.me/mychannel", username: "mychannel" },
 ];
