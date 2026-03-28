@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Cash Loot</title>
+
+<!-- External deps -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+<script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Space+Mono:wght@400;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- Telegram SDK -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<style>
+/* ══════════════════════════════════════════════════
+   GLOBAL RESET & SHARED TOKENS
+══════════════════════════════════════════════════ */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;-moz-user-select:none;user-select:none;
+  -webkit-touch-callout:none;}
+button{outline:none!important;}
+
+:root{
+  --bg:#0a0a0f;
+  --card:#13131a;
+  --card2:#1c1c26;
+  --acc:#f97316;
+  --acc2:#ea580c;
+  --acc3:#ff9f4a;
+  --g:#22c55e;
+  --g2:#16a34a;
+  --g3:#4ade80;
+  --red:#f43f5e;
+  --text:#f1f5f9;
+  --sub:#64748b;
+  --border:rgba(255,255,255,0.07);
+  --wbg:#1a0a02;
+  --wbg-center:#2c1305;
+  --wbg-edge:#0f0501;
+  --muted:rgba(255,220,180,0.75);
+  --accent1:#ff8c42;
+  --accent2:#f97316;
+  --accent3:#ffaa55;
+  --accent4:#ffcc88;
+  --glass:rgba(255,255,255,0.03);
+  --wradius:12px;
+  --shadow-strong:0 20px 60px rgba(36,20,3,0.85);
+  --credit-color:#4ade80;
+  --debit-color:#f87171;
+}
+
+html,body{height:100%;font-family:'Outfit',sans-serif;color:var(--text);overflow-x:hidden;}
+body{display:block;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg);}
+body::-webkit-scrollbar{display:none}
+
+/* ══════════════════════════════════════════════════
+   FLASH SCREENS
+══════════════════════════════════════════════════ */
+.flash-screen{
+  position:fixed;inset:0;z-index:99999;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:18px;padding:30px;text-align:center;
+  animation:flashIn .35s ease;
+}
+@keyframes flashIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+.flash-screen.active{display:flex;}
+
+/* Red – duplicate device */
+#flashRed{background:linear-gradient(135deg,#2a0a02,#3e1204);}
+#flashRed .flash-icon{
+  width:80px;height:80px;border-radius:50%;
+  background:rgba(244,63,94,0.12);border:2px solid rgba(244,63,94,.35);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 40px rgba(244,63,94,.25);
+}
+#flashRed .flash-icon img{width:44px;height:44px;filter:brightness(1.2);}
+#flashRed .flash-title{font-size:22px;font-weight:900;color:#f43f5e;letter-spacing:1.5px;text-transform:uppercase;}
+#flashRed .flash-sub{font-size:13px;font-weight:600;color:rgba(244,63,94,.7);line-height:1.7;max-width:320px;}
+#flashRed .flash-badge{
+  padding:7px 18px;border-radius:99px;
+  background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,.3);
+  font-size:11px;font-weight:800;color:#fb7185;letter-spacing:1px;
+  font-family:'Space Mono',monospace;
+}
+
+/* Green – verified, redirecting */
+#flashGreen{background:linear-gradient(135deg,#072c1a,#0a3e24);}
+#flashGreen .flash-icon{
+  width:80px;height:80px;border-radius:50%;
+  background:rgba(34,197,94,0.1);border:2px solid rgba(34,197,94,.3);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 40px rgba(34,197,94,.2);
+}
+#flashGreen .flash-icon img{width:44px;height:44px;filter:brightness(1.1);}
+#flashGreen .flash-title{font-size:22px;font-weight:900;color:#4ade80;letter-spacing:1.5px;text-transform:uppercase;}
+#flashGreen .flash-sub{font-size:13px;font-weight:600;color:rgba(74,222,128,.7);line-height:1.7;}
+.flash-bar-wrap{width:260px;height:4px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;}
+.flash-bar{height:100%;width:0%;border-radius:99px;
+  background:linear-gradient(90deg,var(--g2),var(--g3));
+  transition:width .1s linear;}
+
+/* ══════════════════════════════════════════════════
+   GATE SCREEN (Verify & Channel Join)
+══════════════════════════════════════════════════ */
+#gateScreen{
+  position:relative;z-index:10;
+  display:none;
+  min-height:100vh;
+}
+#gateScreen.active{display:block;}
+
+.bg-glow{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 80% 40% at 50% 0%,rgba(249,115,22,0.12),transparent 60%);
+}
+
+.wrap{
+  position:relative;z-index:1;
+  min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;
+  padding:16px 14px 40px;gap:12px;
+}
+
+/* User bar */
+.ubar{
+  width:100%;max-width:400px;
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;
+  background:var(--card);border:1px solid var(--border);border-radius:14px;
+  opacity:0;animation:fadeUp .45s .05s ease forwards;
+}
+.uav{width:36px;height:36px;border-radius:50%;
+  border:1.5px solid rgba(249,115,22,0.4);background:var(--card2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:800;flex-shrink:0;overflow:hidden;}
+.uav img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.uname{font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.usub{font-size:10px;color:var(--sub);margin-top:1px;font-family:'Space Mono',monospace}
+.spill{margin-left:auto;flex-shrink:0;display:flex;align-items:center;gap:4px;
+  padding:4px 10px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);
+  border-radius:99px;font-size:9px;font-weight:800;color:var(--g);}
+.sdot{width:5px;height:5px;border-radius:50%;background:var(--g);animation:blink 1.6s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
+
+/* Gate Card */
+.card{
+  width:100%;max-width:400px;background:var(--card);
+  border:1px solid rgba(249,115,22,0.25);border-radius:22px;
+  padding:26px 20px 22px;position:relative;overflow:hidden;
+  box-shadow:0 20px 50px rgba(0,0,0,0.4);
+  opacity:0;animation:fadeUp .5s .1s ease forwards;
+}
+.card::before{content:'';position:absolute;top:0;left:10%;right:10%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(249,115,22,0.6),transparent);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+
+/* Logo */
+.logo-area{display:flex;flex-direction:column;align-items:center;margin-bottom:22px}
+.logo-ring{width:68px;height:68px;position:relative;margin-bottom:12px}
+.rsvg{position:absolute;inset:0;animation:spin 8s linear infinite}
+.logo-core{
+  position:absolute;inset:12px;border-radius:50%;
+  background:rgba(249,115,22,0.15);border:1.5px solid rgba(249,115,22,0.45);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 20px rgba(249,115,22,0.3);
+  animation:pulse 3s ease-in-out infinite;
+}
+.logo-core img{width:26px;height:26px;filter:brightness(1.2);}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 20px rgba(249,115,22,.25)}50%{box-shadow:0 0 34px rgba(249,115,22,.45)}}
+.brand{font-size:26px;font-weight:900;letter-spacing:4px;text-transform:uppercase;
+  background:linear-gradient(135deg,#fff 20%,var(--acc3) 80%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.brand-tag{font-family:'Space Mono',monospace;font-size:9px;color:var(--sub);letter-spacing:2.5px;margin-top:5px}
+
+/* Channels List */
+#channelsList{display:none;margin-bottom:16px}
+.ch-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.ch-label{font-size:10px;font-weight:800;color:var(--sub);text-transform:uppercase;
+  letter-spacing:1px;display:flex;align-items:center;gap:5px}
+.ch-left-badge{font-size:9px;font-weight:800;padding:2px 8px;
+  background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.25);
+  border-radius:99px;color:#fb7185}
+.ch-rows{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.ch-row{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 12px;
+  background:rgba(255,255,255,0.02);
+  border:1px solid rgba(249,115,22,0.2);
+  border-radius:14px;
+  transition:border-color .2s;
+}
+.ch-row.joined-row{
+  background:rgba(34,197,94,0.04);
+  border-color:rgba(34,197,94,0.18);
+}
+.ch-row-ico{
+  width:38px;height:38px;flex-shrink:0;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid rgba(249,115,22,0.3);
+  background:rgba(249,115,22,0.1);
+}
+.ch-row-info{flex:1;min-width:0;}
+.ch-row-name{font-size:13px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;}
+.ch-row-status{font-size:10px;font-weight:600;display:flex;align-items:center;gap:3px;}
+.ch-join-pill{
+  flex-shrink:0;display:flex;align-items:center;gap:4px;
+  padding:7px 13px;background:linear-gradient(135deg,var(--acc2),var(--acc));
+  border:none;border-radius:99px;font-size:10px;font-weight:900;color:#fff;
+  cursor:pointer;text-decoration:none;box-shadow:0 4px 14px rgba(249,115,22,0.5);
+  transition:all .15s;white-space:nowrap;
+}
+.ch-join-pill:hover{transform:scale(1.04);filter:brightness(1.1);}
+.ch-done-badge{flex-shrink:0;display:flex;align-items:center;gap:4px;
+  padding:6px 12px;background:rgba(34,197,94,0.1);
+  border:1px solid rgba(34,197,94,0.25);border-radius:99px;
+  font-size:10px;font-weight:800;color:#4ade80;}
+.ch-prog-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.ch-prog-track{flex:1;height:4px;background:rgba(255,255,255,0.06);border-radius:99px;overflow:hidden;}
+.ch-prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--g2),var(--g3));transition:width .4s ease;}
+.ch-prog-txt{font-size:9px;font-weight:800;color:var(--sub);font-family:'Space Mono',monospace;white-space:nowrap;}
+.ch-hint{display:flex;align-items:center;justify-content:center;gap:5px;
+  padding:9px 12px;background:rgba(249,115,22,0.06);border:1px solid rgba(249,115,22,0.15);
+  border-radius:10px;font-size:10px;color:var(--sub);}
+.vbtn{
+  width:100%;padding:15px;border:none;border-radius:14px;
+  background:linear-gradient(135deg,var(--acc2),var(--acc));
+  color:#fff;font-family:'Outfit',sans-serif;
+  font-size:14px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;
+  box-shadow:0 8px 24px rgba(249,115,22,0.4);transition:all .15s;
+}
+.vbtn:active:not(:disabled){transform:scale(.97)}
+.vbtn:disabled{opacity:.5;cursor:not-allowed}
+.bspin{width:16px;height:16px;border-radius:50%;
+  border:2.5px solid rgba(255,255,255,.25);border-top-color:#fff;
+  animation:spin .65s linear infinite;display:none;}
+.openbtn{
+  width:100%;padding:15px;border:none;border-radius:14px;
+  background:linear-gradient(135deg,var(--g2),var(--g));
+  color:#052e0f;font-weight:900;display:none;align-items:center;justify-content:center;gap:9px;
+  cursor:pointer;}
+.sec{display:flex;align-items:center;justify-content:center;gap:5px;margin-top:12px;font-size:9px;color:var(--sub);}
+#gToast{display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--card2);border:1px solid rgba(244,63,94,.25);color:#fb7185;
+  padding:10px 18px;border-radius:12px;font-size:12px;font-weight:700;z-index:200;}
+
+/* Continuous force-join warning bar */
+.force-join-warning{
+  position:fixed;top:0;left:0;right:0;
+  background:#dc2626;color:white;padding:12px;text-align:center;
+  font-weight:800;z-index:100;animation:slideDown .4s ease;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+@keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+
+/* App Screen */
+#appScreen{display:none;min-height:100vh;background:none;}
+#appScreen.active{display:block;}
+#appScreen::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(800px 400px at 50% 20%,rgba(255,140,66,0.12) 0%,transparent 22%),
+    linear-gradient(180deg,#2c1305 0%,#0f0501 62%);
+}
+.app{position:relative;z-index:2;max-width:480px;margin:0 auto;padding:16px;min-height:100vh;display:flex;flex-direction:column;gap:12px;color:#fff3e6;}
+.compact-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.profile-section{display:flex;align-items:center;gap:12px;flex:1;}
+.compact-avatar{width:50px;height:50px;border-radius:10px;background:linear-gradient(135deg,#f97316,#ea580c);border:2px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:22px;color:#fff;}
+.balance-card{background:linear-gradient(135deg,rgba(249,115,22,0.3),rgba(234,88,12,0.4));border-radius:var(--wradius);padding:16px;border:1px solid rgba(255,255,255,0.25);backdrop-filter:blur(12px);}
+.balance-amount{font-size:36px;font-weight:900;color:#fff;}
+.withdraw-btn{width:100%;padding:16px;border-radius:var(--wradius);background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-size:18px;font-weight:800;cursor:pointer;}
+.referral-card{background:rgba(255,255,255,.05);border-radius:var(--wradius);padding:16px;}
+.transaction-list{max-height:300px;overflow-y:auto;}
+/* other wallet styles keep similar */
+.modal-backdrop{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.8);}
+.modal{width:460px;max-width:90%;border-radius:16px;padding:18px;background:#1f1a12;color:#fff;}
+</style>
+</head>
+<body>
+
+<!-- Flash screens with coin wallet icon -->
+<div class="flash-screen" id="flashRed">
+  <div class="flash-icon"><img src="https://img.icons8.com/ios-glyphs/90/coin-wallet.png" alt="coin-wallet"></div>
+  <div class="flash-title">Fake Account Detected</div>
+  <div class="flash-sub">This device is already linked to another account.<br>Multiple accounts not allowed.</div>
+  <div class="flash-badge">⚠ VIOLATION</div>
+</div>
+<div class="flash-screen" id="flashGreen">
+  <div class="flash-icon"><img src="https://img.icons8.com/ios-glyphs/90/coin-wallet.png" alt="coin-wallet"></div>
+  <div class="flash-title">Verified!</div>
+  <div class="flash-sub" id="flashGreenSub">Redirecting to Cash Loot...</div>
+  <div class="flash-bar-wrap"><div class="flash-bar" id="flashBar"></div></div>
+</div>
+
+<div id="splashScreen" style="position:fixed;inset:0;z-index:99999;display:none;flex-direction:column;align-items:center;justify-content:center;background:#0a0a0f;"><div class="splash-logo-ring" style="width:80px;height:80px;position:relative;"><div class="splash-core" style="position:absolute;inset:14px;border-radius:50%;background:rgba(249,115,22,.2);display:flex;align-items:center;justify-content:center;"><img src="https://img.icons8.com/ios-glyphs/90/coin-wallet.png" width="36" style="filter:brightness(1.2);"></div></div><div class="splash-title" style="font-size:24px;font-weight:900;color:#ff9f4a;">Cash Loot</div><div class="splash-dots"><div class="splash-dot"></div><div class="splash-dot"></div><div class="splash-dot"></div></div></div>
+
+<div id="gateScreen">
+  <div class="bg-glow"></div>
+  <div id="gToast" style="display:none"><span id="gToastTxt"></span></div>
+  <div class="wrap">
+    <div class="ubar" id="ubar" style="display:none"><div class="uav" id="uav">?</div><div style="flex:1"><div class="uname" id="uname">Cash Loot</div><div class="usub" id="usub">Telegram</div></div><div class="spill"><div class="sdot"></div>Secure</div></div>
+    <div class="card">
+      <div class="logo-area"><div class="logo-ring"><div class="logo-core"><img src="https://img.icons8.com/ios-glyphs/90/coin-wallet.png" width="28"></div></div><div class="brand">CASH LOOT</div><div class="brand-tag">REFER · EARN · WITHDRAW</div></div>
+      <div id="statusArea"></div>
+      <div class="prog-wrap" id="progWrap"><div class="prog-row"><div class="prog-msg"><span id="progMsg">Connecting...</span></div><div class="prog-pct" id="progPct">0%</div></div><div class="prog-track"><div class="prog-fill" id="progFill"></div></div></div>
+      <div id="channelsList"></div>
+      <button class="vbtn" id="vBtn" onclick="doVerify()"><span id="btnTxt">Verify & Continue</span><div class="bspin" id="bspin"></div></button>
+      <button class="openbtn" id="openBtn" onclick="openApp()">Open Cash Loot</button>
+      <div class="sec">Secure <div class="dot3"></div> Telegram Verified</div>
+    </div>
+  </div>
+</div>
+
+<div id="appScreen"><div class="app"><div class="compact-header"><div class="profile-section"><div class="compact-avatar" id="compactAvatar"></div><div class="compact-user-info"><h2 class="compact-username" id="compactUsername">Loading...</h2><p class="compact-handle" id="compactHandle"></p></div></div><button class="history-btn" id="compactHistoryBtn"><i class="fa-solid fa-history"></i> History</button></div><div class="balance-card"><div class="balance-header"><span class="balance-label">Wallet Balance</span><span class="active-badge">Active</span></div><div class="balance-amount"><span class="currency">₹</span><span id="compactBalance">0.00</span></div></div><div class="transaction-section"><button class="withdraw-btn" id="compactWithdrawBtn"><i class="fa-solid fa-right-from-bracket"></i> WITHDRAW ₹15</button><div class="upi-section" id="upiSection" style="display:none;"><div class="upi-left"><div class="upi-icon"><img src="https://img.icons8.com/color/512/bhim.png"></div><div class="upi-info"><span class="upi-id" id="compactVpa">Loading...</span></div></div><div class="upi-right"><button class="edit-upi-btn" id="compactEditVpaBtn"><i class="fa-solid fa-pencil"></i></button></div></div></div><div class="referral-card"><div class="referral-stats"><div class="stat-item"><div class="stat-value"><i class="fa-solid fa-user-plus"></i><span id="compactTotalRefers">0</span></div><span>Total Refers</span></div><div class="stat-item"><div class="stat-value"><i class="fa-solid fa-wallet"></i>₹<span id="compactReferralIncome">0.00</span></div><span>Referral Income</span></div></div><p class="referral-instruction">Earn <b>₹<span id="compactRewardPerRef">3</span></b> per referral.</p><div class="referral-link-box" id="compactInviteLink">Loading...</div><div class="referral-actions"><button class="action-btn copy-btn" id="compactCopyBtn">Copy</button><button class="action-btn share-btn" id="compactShareBtn">Share</button></div></div><div class="transactions-card"><div class="transactions-header"><h3><i class="fa-solid fa-receipt"></i> Recent Transactions</h3></div><div class="transaction-list" id="transactionList"></div></div></div><div class="modal-backdrop" id="modalBackdrop"><div class="modal"><h3 id="modalTitle"></h3><div id="modalBody"></div><div style="display:flex;gap:8px;margin-top:25px;"><button class="btn-ghost" id="modalCancel">Cancel</button><button class="btn-prim" id="modalPrimary">OK</button></div></div></div></div>
+
+<script>
+var tg = window.Telegram?.WebApp || null;
+if (tg) { tg.ready(); tg.expand(); }
+var TG_USER = tg?.initDataUnsafe?.user || null;
+var TG_CHATID = TG_USER ? String(TG_USER.id) : null;
+var REF = (new URLSearchParams(location.search).get('ref')) || (tg?.initDataUnsafe?.start_param) || '';
+var API_BASE_URL = 'https://backed-nu.vercel.app';
+var DEVICE_KEY = '_ch_did', ACCOUNT_KEY = '_ch_aid';
+function getDeviceId() { try { var s = localStorage.getItem(DEVICE_KEY); if (s && s.length >= 16) return s; } catch(e) {} try { var cv = document.createElement('canvas'), c = cv.getContext('2d'); cv.width = 200; cv.height = 40; c.font = '14px Arial'; c.fillStyle = '#f60'; c.fillRect(125,1,62,20); c.fillStyle = '#069'; c.fillText('CL',2,15); var fp = cv.toDataURL().slice(-60).replace(/[^a-zA-Z0-9]/g,''); var raw = [navigator.userAgent, screen.width+'x'+screen.height, (window.devicePixelRatio||1), navigator.language||'', new Date().getTimezoneOffset(), fp].join('||'); var d = btoa(unescape(encodeURIComponent(raw))).replace(/[+\/=]/g,'').slice(0,40); localStorage.setItem(DEVICE_KEY, d); return d; } catch(e) { return 'f_' + Math.random().toString(36).slice(2,14); } }
+function isDuplicateDevice() { if (!TG_CHATID) return false; try { var stored = localStorage.getItem(ACCOUNT_KEY); if (!stored) { localStorage.setItem(ACCOUNT_KEY, TG_CHATID); return false; } return stored !== TG_CHATID; } catch(e) { return false; } }
+function showScreen(id) { ['splashScreen','flashGreen','gateScreen','appScreen'].forEach(s => { let el = document.getElementById(s); if (el) el.classList.toggle('active', s === id); }); }
+function showSplash() { document.getElementById('splashScreen').style.display = 'flex'; document.getElementById('splashScreen').classList.add('active'); setTimeout(() => { if(document.getElementById('splashScreen').classList.contains('active')) document.getElementById('splashScreen').style.display = 'flex'; }, 10); }
+function hideSplash() { document.getElementById('splashScreen').style.display = 'none'; document.getElementById('splashScreen').classList.remove('active'); }
+function showFlashGreen(sub, callback) { document.getElementById('flashGreenSub').textContent = sub || 'Redirecting to Cash Loot...'; showScreen('flashGreen'); var bar = document.getElementById('flashBar'), pct = 0; var iv = setInterval(function(){ pct += 2; bar.style.width = pct + '%'; if (pct >= 100) { clearInterval(iv); setTimeout(callback, 200); } }, 30); }
+function gToast(msg) { var t = document.getElementById('gToast'); document.getElementById('gToastTxt').textContent = msg; t.style.display = 'flex'; clearTimeout(t._t); t._t = setTimeout(() => t.style.display = 'none', 3200); }
+
+var _channelState = [];
+var continuousWatchInterval = null;
+var gateActive = false;
+
+function renderChannelList() {
+  var el = document.getElementById('channelsList');
+  if (!_channelState.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  var pending = _channelState.filter(c => !c.joined);
+  var h = '<div class="ch-hdr"><div class="ch-label">📢 Required Channels</div><div class="ch-left-badge">' + pending.length + ' left</div></div><div class="ch-rows">';
+  _channelState.forEach((ch, idx) => {
+    var joined = ch.joined;
+    var icoSvg = ch.type === 'youtube' ? '▶️' : '📱';
+    h += '<div class="ch-row" id="chrow-' + idx + '"><div class="ch-row-ico">' + icoSvg + '</div><div class="ch-row-info"><div class="ch-row-name">' + esc(ch.name) + '</div><div class="ch-row-status">' + (joined ? '✅ Joined' : '❌ Not joined') + '</div></div>' +
+      (joined ? '<div class="ch-done-badge">✔ Done</div>' : '<a class="ch-join-pill" href="' + esc(ch.link) + '" target="_blank" onclick="markVisited(' + idx + ')">JOIN</a>') + '</div>';
+  });
+  h += '</div><div class="ch-prog-row"><div class="ch-prog-track"><div class="ch-prog-fill" style="width:' + (_channelState.filter(c=>c.joined).length / _channelState.length * 100) + '%;"></div></div><span class="ch-prog-txt">' + _channelState.filter(c=>c.joined).length + '/' + _channelState.length + '</span></div><div class="ch-hint">⚠️ Stay in all channels to keep earning!</div>';
+  el.innerHTML = h;
+}
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function markVisited(idx) { gToast("Please join and come back, then click Verify"); }
+
+// CONTINUOUS FORCE-JOIN CHECK: runs every 6 seconds when gate is shown
+async function continuousJoinCheck() {
+  if (!gateActive) return;
+  if (!TG_CHATID) return;
+  try {
+    var res = await fetch(API_BASE_URL + '/api/channels/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chatId: TG_CHATID }) });
+    var data = await res.json();
+    if (data.allJoined) {
+      // user rejoined all -> if we are in gate but appScreen hidden? we should redirect to app
+      if (document.getElementById('gateScreen').classList.contains('active')) {
+        clearInterval(continuousWatchInterval);
+        gateActive = false;
+        showFlashGreen('All channels joined!', () => { showScreen('appScreen'); initWalletApp(); });
+      }
+      return;
+    }
+    // update pending state
+    var pendingNames = (data.pending || []).map(p => p.name);
+    var anyChanged = false;
+    _channelState = _channelState.map(ch => {
+      var newJoined = pendingNames.indexOf(ch.name) === -1;
+      if (ch.joined !== newJoined) anyChanged = true;
+      return { ...ch, joined: newJoined };
+    });
+    if (anyChanged) renderChannelList();
+    // if user is inside app but left channels -> force back to gate with warning
+    if (document.getElementById('appScreen').classList.contains('active') && !data.allJoined) {
+      // show floating warning bar and switch to gate
+      let warnBar = document.querySelector('.force-join-warning');
+      if (!warnBar) {
+        warnBar = document.createElement('div');
+        warnBar.className = 'force-join-warning';
+        warnBar.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> You left required channels! Returning to verification.';
+        document.body.appendChild(warnBar);
+        setTimeout(() => warnBar.remove(), 3000);
+      }
+      showScreen('gateScreen');
+      gateActive = true;
+      renderChannelList();
+      if (continuousWatchInterval) clearInterval(continuousWatchInterval);
+      continuousWatchInterval = setInterval(() => continuousJoinCheck(), 5000);
+    }
+  } catch(e) { console.warn("continuous join check error", e); }
+}
+
+async function autoCheck() {
+  try {
+    var lr = await fetch(API_BASE_URL + '/api/channels/list');
+    if (!lr.ok) throw new Error();
+    var ld = await lr.json();
+    if (!ld.channels) throw new Error();
+    _channelState = ld.channels.map(ch => ({ name: ch.name, link: ch.link, type: ch.type || 'telegram', joined: false }));
+  } catch(e) { gToast('Could not load channels'); return; }
+  if (!_channelState.length) { showFlashGreen('Welcome!', () => { showScreen('appScreen'); initWalletApp(); }); return; }
+  try {
+    var cr = await fetch(API_BASE_URL + '/api/channels/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chatId: TG_CHATID }) });
+    var cd = await cr.json();
+    if (cd.allJoined) {
+      showFlashGreen('All Verified!', () => { showScreen('appScreen'); initWalletApp(); });
+      return;
+    }
+    var pendingNames = (cd.pending || []).map(p => p.name);
+    _channelState = _channelState.map(ch => ({ ...ch, joined: pendingNames.indexOf(ch.name) === -1 }));
+  } catch(e) { console.error(e); }
+  renderChannelList();
+  // start continuous watch
+  gateActive = true;
+  if (continuousWatchInterval) clearInterval(continuousWatchInterval);
+  continuousWatchInterval = setInterval(() => continuousJoinCheck(), 5000);
+}
+
+async function doVerify() {
+  if (!TG_CHATID) { gToast("Open from Telegram"); return; }
+  var btn = document.getElementById('vBtn'); btn.disabled = true; document.getElementById('bspin').style.display = 'block';
+  try {
+    var r = await fetch(API_BASE_URL + '/api/channels/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chatId: TG_CHATID }) });
+    var d = await r.json();
+    document.getElementById('bspin').style.display = 'none';
+    if (d.allJoined) {
+      if (continuousWatchInterval) clearInterval(continuousWatchInterval);
+      gateActive = false;
+      showFlashGreen('Verified!', () => { showScreen('appScreen'); initWalletApp(); });
+    } else {
+      btn.disabled = false;
+      var pendingNames = (d.pending || []).map(p => p.name);
+      _channelState = _channelState.map(ch => ({ ...ch, joined: pendingNames.indexOf(ch.name) === -1 }));
+      renderChannelList();
+      gToast('Join all channels first!');
+    }
+  } catch(e) { btn.disabled = false; document.getElementById('bspin').style.display = 'none'; gToast('Network error'); }
+}
+
+function openApp() { showFlashGreen('Loading Cash Loot...', () => { showScreen('appScreen'); initWalletApp(); }); }
+
+var walletInited = false;
+var notyf;
+function initWalletApp() {
+  if (walletInited) return;
+  walletInited = true;
+  notyf = new Notyf();
+  // minimal wallet reusing existing logic but ensure referral etc works
+  var chatId = TG_CHATID;
+  if (!chatId) return;
+  function loadUserData() {
+    fetch(API_BASE_URL + '/api/user/info?chatId=' + chatId).then(r=>r.json()).then(u=>{ if(u) document.getElementById('compactUsername').innerHTML = (u.first_name||'User')+' <i class="fa-solid fa-crown"></i>'; });
+    fetch(API_BASE_URL + '/api/wallet/balance?chatId=' + chatId).then(r=>r.json()).then(b=>{ if(b) document.getElementById('compactBalance').innerText = parseFloat(b.balance).toFixed(2); });
+    fetch(API_BASE_URL + '/api/referral?chatId=' + chatId).then(r=>r.json()).then(ref=>{ if(ref){ document.getElementById('compactTotalRefers').innerText = ref.total_referrals||0; document.getElementById('compactReferralIncome').innerText = ref.total_earned||'0.00'; document.getElementById('compactRewardPerRef').innerText = ref.commission_per_referral||3; } });
+    fetch(API_BASE_URL + '/api/upi?chatId=' + chatId).then(r=>r.json()).then(upi=>{ if(upi && upi.vpa){ document.getElementById('upiSection').style.display = 'flex'; document.getElementById('compactVpa').innerText = upi.vpa; } });
+    fetch(API_BASE_URL + '/api/wallet/transactions?chatId=' + chatId + '&limit=10').then(r=>r.json()).then(txs=>{ let list = document.getElementById('transactionList'); if(txs.transactions && txs.transactions.length){ list.innerHTML = txs.transactions.map(tx => `<div class="transaction-item ${tx.type}"><div>${tx.description||tx.type}</div><div>₹${tx.amount}</div></div>`).join(''); } else list.innerHTML = '<div class="no-transactions">No transactions</div>'; });
+  }
+  loadUserData();
+  document.getElementById('compactWithdrawBtn').onclick = () => { notyf?.error("Withdrawals enabled after full verification"); };
+  document.getElementById('compactCopyBtn').onclick = () => { let link = document.getElementById('compactInviteLink').innerText; if(link) navigator.clipboard.writeText(link).then(()=>notyf.success('Copied')); };
+  document.getElementById('compactShareBtn').onclick = () => { let link = document.getElementById('compactInviteLink').innerText; if(navigator.share) navigator.share({title:'Cash Loot',text:'Join me on Cash Loot',url:link}); else window.open('https://t.me/share/url?url='+encodeURIComponent(link),'_blank'); };
+  fetch(API_BASE_URL + '/api/user/info?chatId=' + chatId).then(r=>r.json()).then(u=>{ if(u && u.referral_code) document.getElementById('compactInviteLink').innerText = 'https://t.me/CashLootBot?start='+u.referral_code; });
+}
+
+// boot sequence
+(async function boot() {
+  showSplash();
+  if (TG_USER) {
+    document.getElementById('ubar').style.display = 'flex';
+    document.getElementById('uname').textContent = TG_USER.first_name || 'User';
+    document.getElementById('usub').textContent = TG_USER.username ? '@'+TG_USER.username : 'Telegram';
+    if (TG_USER.photo_url) document.getElementById('uav').innerHTML = '<img src="'+TG_USER.photo_url+'">';
+    else document.getElementById('uav').textContent = (TG_USER.first_name?TG_USER.first_name[0]:'U');
+  }
+  var isDupe = isDuplicateDevice();
+  if (TG_CHATID) {
+    try { await fetch(API_BASE_URL + '/api/bot/refer', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ chatId: TG_CHATID, username: TG_USER?.username||'', avatar: TG_USER?.photo_url||'', ref: REF, duplicate_device: isDupe, device_id: getDeviceId() }) }); } catch(e) {}
+  }
+  if (!TG_CHATID) { showScreen('gateScreen'); document.getElementById('statusArea').innerHTML = '<div class="b-ico"><svg viewBox="0 0 24 24" width="40"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></div><div class="b-title">Open from Telegram</div>'; return; }
+  var alreadyVerified = false;
+  try { var sr = await fetch(API_BASE_URL + '/api/channels/status?chatId='+TG_CHATID); if(sr.ok){ var sd = await sr.json(); if(sd.verified) alreadyVerified = true; } } catch(e) {}
+  if (alreadyVerified) {
+    showFlashGreen('Welcome back!', () => { showScreen('appScreen'); initWalletApp(); hideSplash(); });
+    return;
+  }
+  showScreen('gateScreen');
+  hideSplash();
+  await autoCheck();
+})();
+</script>
+</body>
+</html>
