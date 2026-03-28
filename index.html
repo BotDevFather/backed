@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Cash Hungama</title>
+<title>Cash Loot</title>
 
 <!-- External deps -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
@@ -930,7 +930,7 @@ var TG_CHATID = TG_USER ? String(TG_USER.id) : null;
 var REF = (new URLSearchParams(location.search).get('ref'))
           || (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param
               ? tg.initDataUnsafe.start_param : '') || '';
-
+var API_BASE_URL = "https://backed-nu.vercel.app/"
 /* ══════════════════════════════════════════════════════
    STEP 2 — Device fingerprint (silent duplicate detection)
    Never blocks or redirects user. Just a flag.
