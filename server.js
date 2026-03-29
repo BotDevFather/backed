@@ -363,52 +363,35 @@ app.get("/api/channels/list", (req, res) => {
   }
 });
 
-app.post("/api/channels/check", async (req, res) => {
-  const { chatId } = req.body;
+const results = await Promise.all(
+  REQUIRED_CHANNELS.map(async (ch) => {
+    try {
+      if (ch.type === "youtube") {
+        return { ...ch, joined: true };
+      }
 
-  if (!chatId) {
-    return res.status(400).json({ error: "chatId required" });
-  }
+      const realJoined = await checkChannelMembership(chatId, ch.chatId);
+      if (realJoined) {
+        return { ...ch, joined: true };
+      }
 
-  try {
-    const results = await Promise.all(
-      REQUIRED_CHANNELS.map(async (ch) => {
-        if (ch.type === "youtube") {
-          return { ...ch, joined: true };
-        }
+      const exists = await JoinRequest.findOne({
+        userId: String(chatId),
+        chatId: String(ch.chatId)
+      });
 
-        const realJoined = await checkChannelMembership(chatId, ch.chatId);
-        if (realJoined) {
-          return { ...ch, joined: true };
-        }
+      if (exists) {
+        return { ...ch, joined: true };
+      }
 
-        const exists = await JoinRequest.findOne({
-          userId: String(chatId),
-          chatId: String(ch.chatId)
-        });
+      return { ...ch, joined: false };
 
-        if (exists) {
-          return { ...ch, joined: true };
-        }
-
-        return { ...ch, joined: false };
-      })
-    );
-
-    const pending = results.filter(ch => !ch.joined);
-
-    res.json({
-      allJoined: pending.length === 0,
-      total: REQUIRED_CHANNELS.length,
-      joined: REQUIRED_CHANNELS.length - pending.length,
-      channels: results
-    });
-
-  } catch (e) {
-    console.error("[channels/check]", e.message);
-    res.status(500).json({ error: "Channel check failed" });
-  }
-});
+    } catch (err) {
+      console.error("Channel check error:", err.message);
+      return { ...ch, joined: false }; // fallback
+    }
+  })
+);
 
 app.get("/api/channels/status", async (req, res) => {
   const { chatId } = req.query;
