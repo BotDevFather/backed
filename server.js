@@ -409,6 +409,7 @@ app.post("/api/channels/check", async (req, res) => {
       allJoined: pending.length === 0,
       total: REQUIRED_CHANNELS.length,
       joined: REQUIRED_CHANNELS.length - pending.length,
+      pending, // ✅ ADD THIS
       channels: safeResults
     });
 
