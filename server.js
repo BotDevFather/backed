@@ -83,6 +83,11 @@ const Withdraw = mongoose.model("Withdraw", new mongoose.Schema({
   failure_reason: String, admin_message_id: Number
 }));
 
+const JoinRequest = mongoose.model("JoinRequest", new mongoose.Schema({
+  userId: String,
+  chatId: String
+}));
+
 async function deleteAdminMessage(messageId) {
   if (!messageId) return;
   await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/deleteMessage`, {
@@ -360,30 +365,48 @@ app.get("/api/channels/list", (req, res) => {
 
 app.post("/api/channels/check", async (req, res) => {
   const { chatId } = req.body;
-  if (!chatId) return res.status(400).json({ error: "chatId required" });
+
+  if (!chatId) {
+    return res.status(400).json({ error: "chatId required" });
+  }
+
   try {
     const results = await Promise.all(
       REQUIRED_CHANNELS.map(async (ch) => {
-        if (ch.type === "youtube") return { ...ch, joined: true };
-        const joined = await checkChannelMembership(chatId, ch.chatId);
-        return { ...ch, joined };
+        if (ch.type === "youtube") {
+          return { ...ch, joined: true };
+        }
+
+        const realJoined = await checkChannelMembership(chatId, ch.chatId);
+        if (realJoined) {
+          return { ...ch, joined: true };
+        }
+
+        const exists = await JoinRequest.findOne({
+          userId: String(chatId),
+          chatId: String(ch.chatId)
+        });
+
+        if (exists) {
+          return { ...ch, joined: true };
+        }
+
+        return { ...ch, joined: false };
       })
     );
-    const pending   = results.filter(ch => !ch.joined).map(ch => ({ name: ch.name, link: ch.link }));
-    const allJoined = pending.length === 0;
-    if (allJoined) {
-      await User.findOneAndUpdate({ chatId: String(chatId) },
-        { channels_verified: true, channels_verified_at: new Date() }, { upsert: false })
-        .catch(e => console.warn("Could not update channels_verified:", e.message));
-    } else {
-      // Clear verified flag so next boot re-checks live
-      await User.findOneAndUpdate({ chatId: String(chatId) },
-        { channels_verified: false }, { upsert: false }).catch(() => {});
-    }
-    res.json({ allJoined, pending, total: REQUIRED_CHANNELS.length, joined: REQUIRED_CHANNELS.length - pending.length });
+
+    const pending = results.filter(ch => !ch.joined);
+
+    res.json({
+      allJoined: pending.length === 0,
+      total: REQUIRED_CHANNELS.length,
+      joined: REQUIRED_CHANNELS.length - pending.length,
+      channels: results
+    });
+
   } catch (e) {
     console.error("[channels/check]", e.message);
-    res.status(500).json({ error: "Channel check failed: " + e.message });
+    res.status(500).json({ error: "Channel check failed" });
   }
 });
 
@@ -481,4 +504,23 @@ app.get("/api/user/duplicate-status", async (req, res) => {
   });
 });
 
+app.post("/api/channels/save-request", async (req, res) => {
+  const { userId, chatId } = req.body;
+
+  if (!userId || !chatId) {
+    return res.status(400).json({ error: "Missing params" });
+  }
+
+  try {
+    await JoinRequest.updateOne(
+      { userId, chatId },
+      { $set: { userId, chatId } },
+      { upsert: true }
+    );
+
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to save" });
+  }
+});
 export default app;
