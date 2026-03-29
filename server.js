@@ -363,35 +363,63 @@ app.get("/api/channels/list", (req, res) => {
   }
 });
 
-const results = await Promise.all(
-  REQUIRED_CHANNELS.map(async (ch) => {
-    try {
-      if (ch.type === "youtube") {
-        return { ...ch, joined: true };
-      }
+app.post("/api/channels/check", async (req, res) => {
+  const { chatId } = req.body;
 
-      const realJoined = await checkChannelMembership(chatId, ch.chatId);
-      if (realJoined) {
-        return { ...ch, joined: true };
-      }
+  if (!chatId) {
+    return res.status(400).json({ error: "chatId required" });
+  }
 
-      const exists = await JoinRequest.findOne({
-        userId: String(chatId),
-        chatId: String(ch.chatId)
-      });
+  try {
+    const results = await Promise.all(
+      REQUIRED_CHANNELS.map(async (ch) => {
+        try {
+          if (ch.type === "youtube") {
+            return { ...ch, joined: true };
+          }
 
-      if (exists) {
-        return { ...ch, joined: true };
-      }
+          const realJoined = await checkChannelMembership(chatId, ch.chatId);
+          if (realJoined) {
+            return { ...ch, joined: true };
+          }
 
-      return { ...ch, joined: false };
+          const exists = await JoinRequest.findOne({
+            userId: String(chatId),
+            chatId: String(ch.chatId)
+          });
 
-    } catch (err) {
-      console.error("Channel check error:", err.message);
-      return { ...ch, joined: false }; // fallback
-    }
-  })
-);
+          if (exists) {
+            return { ...ch, joined: true };
+          }
+
+          return { ...ch, joined: false };
+
+        } catch (err) {
+          console.error(`[Channel Error] ${ch.name}:`, err.message);
+          return { ...ch, joined: false };
+        }
+      })
+    );
+
+    const safeResults = Array.isArray(results) ? results : [];
+
+    const pending = safeResults.filter(ch => !ch?.joined);
+
+    return res.json({
+      allJoined: pending.length === 0,
+      total: REQUIRED_CHANNELS.length,
+      joined: REQUIRED_CHANNELS.length - pending.length,
+      channels: safeResults
+    });
+
+  } catch (e) {
+    console.error("[channels/check fatal]", e.message);
+    return res.status(500).json({
+      error: "Channel check failed",
+      details: e.message
+    });
+  }
+});
 
 app.get("/api/channels/status", async (req, res) => {
   const { chatId } = req.query;
