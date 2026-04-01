@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en" style="--tg-color-scheme: dark; --tg-theme-bg-color: #212d3b; --tg-theme-section-bg-color: #1d2733; --tg-theme-secondary-bg-color: #151e27; --tg-theme-text-color: #ffffff; --tg-theme-hint-color: #7d8b99; --tg-theme-link-color: #5eabe1; --tg-theme-button-color: #50a8eb; --tg-theme-button-text-color: #ffffff; --tg-theme-header-bg-color: #242d39; --tg-theme-accent-text-color: #64b5ef; --tg-theme-section-header-text-color: #79c4fc; --tg-theme-subtitle-text-color: #7b8790; --tg-theme-destructive-text-color: #ee686f; --tg-theme-section-separator-color: #0d1218; --tg-theme-bottom-bar-bg-color: #151e27; --tg-viewport-height: 100vh; --tg-viewport-stable-height: 100vh;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Device Authorization - PVB™</title>
+    <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Load FingerprintJS -->
+    <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0c0c0c;
+            --primary-color: #6366f1;
+            --success-color: #22c55e;
+            --error-color: #ef4444;
+            --warning-color: #f59e0b;
+            --text-color: #e5e7eb;
+            --text-muted-color: #94a3b8;
+            --galaxy-purple: #4c1d95;
+            --galaxy-blue: #1e40af;
+            --galaxy-pink: #be185d;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+
+        body {
+            user-select: none;
+            background: linear-gradient(160deg, #0c0c0c 0%, #1e1e2e 35%, #2d1b69 100%);
+            color: var(--text-color);
+            font-family: 'Work Sans', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .galaxy-bg {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -2;
+            background: radial-gradient(ellipse at center, var(--galaxy-purple) 0%, var(--galaxy-blue) 30%, #0c0c0c 70%);
+            overflow: hidden;
+        }
+
+        .stars { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+
+        .star {
+            position: absolute; background-color: white; border-radius: 50%;
+            animation: twinkle 5s infinite ease-in-out;
+        }
+
+        @keyframes twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+
+        .nebula {
+            position: absolute; width: 100%; height: 100%;
+            background:
+                radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(34, 197, 94, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(239, 68, 68, 0.05) 0%, transparent 50%);
+            animation: nebula-drift 30s infinite alternate ease-in-out;
+        }
+
+        @keyframes nebula-drift {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(-5%, 5%) scale(1.1); }
+        }
+
+        .auth-container {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            width: 100%; max-width: 420px;
+            background: linear-gradient(145deg, rgba(30,30,46,0.7), rgba(12,12,12,0.9));
+            border: 1px solid rgba(99,102,241,0.2);
+            border-radius: 28px; padding: 50px 35px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05), 0 0 30px rgba(99,102,241,0.2);
+            backdrop-filter: blur(15px);
+            animation: container-rise 1.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
+            transform: translateY(30px); opacity: 0;
+            position: relative; overflow: hidden;
+        }
+
+        .auth-container::before {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(99,102,241,0.05), transparent, rgba(34,197,94,0.05), transparent);
+            animation: shine 8s infinite linear; z-index: -1;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(0deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(360deg); }
+        }
+
+        @keyframes container-rise { to { transform: translateY(0); opacity: 1; } }
+
+        .state-container {
+            display: none; flex-direction: column; align-items: center;
+            width: 100%; transition: opacity 0.3s ease;
+        }
+
+        .icon-wrapper {
+            width: 130px; height: 130px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            margin-bottom: 35px; position: relative;
+            border: 2px solid rgba(255,255,255,0.1);
+            background: radial-gradient(ellipse at center, rgba(99,102,241,0.08), transparent);
+            animation: icon-emerge 1.2s 0.3s cubic-bezier(0.68,-0.55,0.265,1.55) forwards;
+            transform: scale(0.7); opacity: 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        @keyframes icon-emerge { to { transform: scale(1); opacity: 1; } }
+
+        .icon-wrapper::before {
+            content: ''; position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, rgba(99,102,241,0.4), transparent, rgba(34,197,94,0.3));
+            animation: halo-spin 4s linear infinite; opacity: 0.6; z-index: -1;
+        }
+
+        @keyframes halo-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .icon-wrapper i { font-size: 50px; z-index: 2; filter: drop-shadow(0 4px 12px rgba(99,102,241,0.4)); }
+
+        .icon-wrapper.success { border-color: rgba(34,197,94,0.3); background: radial-gradient(ellipse at center, rgba(34,197,94,0.12), transparent); }
+        .icon-wrapper.success::before { background: linear-gradient(45deg, rgba(34,197,94,0.5), transparent, rgba(34,197,94,0.3)); }
+        .icon-wrapper.success i { color: var(--success-color); filter: drop-shadow(0 4px 12px rgba(34,197,94,0.5)); }
+
+        .icon-wrapper.error { border-color: rgba(239,68,68,0.3); background: radial-gradient(ellipse at center, rgba(239,68,68,0.12), transparent); }
+        .icon-wrapper.error::before { background: linear-gradient(45deg, rgba(239,68,68,0.5), transparent, rgba(239,68,68,0.3)); }
+        .icon-wrapper.error i { color: var(--error-color); filter: drop-shadow(0 4px 12px rgba(239,68,68,0.5)); }
+
+        .icon-wrapper.warning { border-color: rgba(245,158,11,0.3); background: radial-gradient(ellipse at center, rgba(245,158,11,0.12), transparent); }
+        .icon-wrapper.warning::before { background: linear-gradient(45deg, rgba(245,158,11,0.5), transparent, rgba(245,158,11,0.3)); }
+        .icon-wrapper.warning i { color: var(--warning-color); filter: drop-shadow(0 4px 12px rgba(245,158,11,0.5)); }
+
+        #loading-state .loader {
+            width: 130px; height: 130px; position: relative; margin-bottom: 35px;
+        }
+
+        .spinner {
+            position: absolute; width: 100%; height: 100%;
+            border-radius: 50%; border: 2px solid transparent;
+            animation: rotate 2s linear infinite;
+        }
+
+        .spinner.s1 { border-top: 3px solid #818cf8; border-right: 3px solid #818cf8; animation-duration: 2.2s; opacity: 0.9; }
+        .spinner.s2 { border-top: 3px solid #34d399; border-left: 3px solid #34d399; animation-duration: 2.8s; animation-direction: reverse; transform: scale(0.85); opacity: 0.7; }
+        .spinner.s3 { border-top: 3px solid #a78bfa; border-bottom: 3px solid #a78bfa; animation-duration: 3.4s; transform: scale(0.7); opacity: 0.5; }
+
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        h1 {
+            font-size: 32px; font-weight: 800; margin-bottom: 15px;
+            background: linear-gradient(135deg, #818cf8, #34d399, #a78bfa);
+            background-size: 200% 200%;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: text-shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes text-shimmer { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+
+        p {
+            font-size: 17px; color: var(--text-muted-color); margin-bottom: 35px;
+            max-width: 320px; line-height: 1.6;
+            animation: text-fade-up 0.8s 0.6s ease-out both;
+            transform: translateY(15px); opacity: 0;
+        }
+
+        @keyframes text-fade-up { to { transform: translateY(0); opacity: 1; } }
+
+        .footer {
+            position: absolute; bottom: 25px; left: 0; width: 100%;
+            text-align: center; font-size: 13px; color: var(--text-muted-color);
+            padding: 0 20px; opacity: 0.8; z-index: 10;
+        }
+
+        .footer a {
+            color: var(--text-muted-color); text-decoration: none; transition: all 0.3s ease;
+            position: relative; display: inline-flex; align-items: center; gap: 5px;
+        }
+
+        .footer a::after {
+            content: ''; position: absolute; bottom: -1px; left: 0;
+            width: 0; height: 1px; background: var(--primary-color); transition: width 0.3s;
+        }
+
+        .footer a:hover { color: var(--primary-color); }
+        .footer a:hover::after { width: 100%; }
+
+        .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+
+        .particle {
+            position: absolute; width: 4px; height: 4px;
+            background: rgba(255, 255, 255, 0.5); border-radius: 50%;
+            animation: float 15s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) translateX(0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100px) translateX(20px); opacity: 0; }
+        }
+
+        @media (max-width: 480px) {
+            .auth-container { max-width: 90%; padding: 40px 25px; }
+            h1 { font-size: 28px; }
+            p { font-size: 16px; }
+            .icon-wrapper, #loading-state .loader { width: 110px; height: 110px; }
+            .icon-wrapper i { font-size: 45px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="galaxy-bg">
+        <div class="nebula"></div>
+        <div class="stars" id="stars"></div>
+    </div>
+
+    <div class="particles" id="particles"></div>
+
+    <div class="auth-container">
+        <!-- LOADING -->
+        <div id="loading-state" class="state-container">
+            <div class="loader">
+                <div class="spinner s1"></div>
+                <div class="spinner s2"></div>
+                <div class="spinner s3"></div>
+            </div>
+            <h1>Device Verification</h1>
+            <p id="loading-text">Initializing…</p>
+        </div>
+
+        <!-- SUCCESS -->
+        <div id="success-state" class="state-container" style="display:none;">
+            <div class="icon-wrapper success"><i class="fas fa-shield-check"></i></div>
+            <h1>Device verified ✅</h1>
+            <p>You can safely return to the bot.</p>
+        </div>
+
+        <!-- EXPIRED -->
+        <div id="expired-state" class="state-container" style="display:none;">
+            <div class="icon-wrapper error"><i class="fas fa-clock"></i></div>
+            <h1>Session expired</h1>
+            <p>Please restart verification from the bot.</p>
+        </div>
+
+        <!-- DEVICE BLOCKED -->
+        <div id="device-blocked-state" class="state-container" style="display:none;">
+            <div class="icon-wrapper warning"><i class="fas fa-ban"></i></div>
+            <h1>Device blocked</h1>
+            <p>This device is already linked to another account.</p>
+        </div>
+
+        <!-- IP BLOCKED -->
+        <div id="ip-blocked-state" class="state-container" style="display:none;">
+            <div class="icon-wrapper warning"><i class="fas fa-network-wired"></i></div>
+            <h1>Multiple accounts detected</h1>
+            <p>Verification blocked for security reasons.</p>
+        </div>
+
+        <!-- GENERIC ERROR -->
+        <div id="error-state" class="state-container" style="display:none;">
+            <div class="icon-wrapper error"><i class="fas fa-exclamation-triangle"></i></div>
+            <h1>Verification failed</h1>
+            <p>Please try again later.</p>
+        </div>
+
+        <!-- NETWORK ERROR -->
+        <div id="network-error-state" class="state-container" style="display:none;">
+            <div class="icon-wrapper error"><i class="fas fa-wifi"></i></div>
+            <h1>Network error</h1>
+            <p>Please check your connection.</p>
+        </div>
+
+        <!-- NO TOKEN -->
+        <div id="no-token-state" class="state-container" style="display:none;">
+            <div class="icon-wrapper error"><i class="fas fa-exclamation-circle"></i></div>
+            <h1>Invalid session</h1>
+            <p>Please open this page from the bot.</p>
+        </div>
+    </div>
+
+    <div class="footer">
+        <a href="https://t.me/BotDevFather" target="_blank">
+            <i class="fas fa-code"></i> © BotDevFather | Security Verification
+        </a>
+    </div>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        // ─── Telegram WebApp init ───────────────────────────────────────────
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        // ─── NEW API base (session-token system) ────────────────────────────
+        const API_BASE = "https://super-duper-journey-rho.vercel.app";
+
+        // ─── URL params ─────────────────────────────────────────────────────
+        const urlParams    = new URLSearchParams(window.location.search);
+        const token        = urlParams.get("token");
+        const webhook      = urlParams.get("webhook");
+        const failwebhook  = urlParams.get("failwebhook");
+        const botId        = urlParams.get("bot") || "";   // passed by bot in webapp_url
+
+        const loadingText  = document.getElementById("loading-text");
+
+        // ─── Background helpers ──────────────────────────────────────────────
+        function createStars() {
+            const container = document.getElementById('stars');
+            for (let i = 0; i < 150; i++) {
+                const s = document.createElement('div');
+                s.classList.add('star');
+                s.style.left   = `${Math.random() * 100}%`;
+                s.style.top    = `${Math.random() * 100}%`;
+                s.style.width  = s.style.height = `${Math.random() * 3}px`;
+                s.style.animationDelay = `${Math.random() * 5}s`;
+                container.appendChild(s);
+            }
+        }
+
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 30; i++) {
+                const p = document.createElement('div');
+                p.classList.add('particle');
+                const size = Math.random() * 3 + 1;
+                p.style.left             = `${Math.random() * 100}%`;
+                p.style.width            = p.style.height = `${size}px`;
+                p.style.animationDuration = `${Math.random() * 10 + 10}s`;
+                p.style.animationDelay   = `${Math.random() * 15}s`;
+                container.appendChild(p);
+            }
+        }
+
+        // ─── UI state switcher ───────────────────────────────────────────────
+        function showState(state) {
+            const all = ['loading','success','expired','device-blocked','ip-blocked','error','network-error','no-token'];
+            all.forEach(s => {
+                const el = document.getElementById(`${s}-state`);
+                if (el) { el.style.display = 'none'; el.style.opacity = '0'; }
+            });
+            const target = document.getElementById(`${state}-state`);
+            if (target) {
+                setTimeout(() => { target.style.display = 'flex'; target.style.opacity = '1'; }, 50);
+            }
+        }
+
+        // ─── Generic webhook sender ──────────────────────────────────────────
+        async function sendWebhook(url, payload) {
+            try {
+                const r = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!r.ok) console.error('Webhook error:', r.status);
+                return true;
+            } catch (e) {
+                console.error('Webhook exception:', e);
+                return false;
+            }
+        }
+
+        // ─── Build common webhook payload ────────────────────────────────────
+        function buildCommonPayload(fingerprint) {
+            const user = tg.initDataUnsafe?.user;
+            return {
+                timestamp:  Date.now(),
+                token,
+                fingerprint,
+                user: user ? {
+                    id:            user.id,
+                    first_name:    user.first_name  || "",
+                    last_name:     user.last_name   || "",
+                    username:      user.username    || "",
+                    language_code: user.language_code || "en"
+                } : null,
+                platform:   "Telegram WebApp",
+                user_agent: navigator.userAgent,
+                language:   navigator.language
+            };
+        }
+
+        // ─── MAIN VERIFICATION (new session-token API) ───────────────────────
+        async function verifyDevice() {
+            // 1. Require token
+            if (!token) { showState('no-token'); return; }
+
+            loadingText.textContent = "Checking your device…";
+
+            // 2. Generate fingerprint
+            let fingerprint;
+            try {
+                const fp  = await FingerprintJS.load();
+                const res = await fp.get();
+                fingerprint = res.visitorId;
+            } catch (e) {
+                console.error("FingerprintJS failed:", e);
+                showState('network-error');
+                return;
+            }
+
+            loadingText.textContent = "Verifying with server…";
+
+            // 3. Call NEW verify endpoint
+            //    POST /api/verify  { token, fingerprint }
+            let data;
+            try {
+                const response = await fetch(`${API_BASE}/api/verify`, {
+                    method:  "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body:    JSON.stringify({ token, fingerprint })
+                });
+
+                if (!response.ok) {
+                    // Non-2xx HTTP → treat as server error
+                    const errText = await response.text().catch(() => "");
+                    console.error("Verify HTTP error:", response.status, errText);
+                    showState('error');
+                    return;
+                }
+
+                data = await response.json();
+            } catch (netErr) {
+                console.error("Network error during verify:", netErr);
+                showState('network-error');
+
+                // Send network-error webhook if configured
+                if (webhook) {
+                    sendWebhook(webhook, {
+                        ...buildCommonPayload(fingerprint || ""),
+                        action: "verification_error",
+                        success: false,
+                        status: "NETWORK_ERROR",
+                        error: netErr.message || "Network error"
+                    });
+                }
+                return;
+            }
+
+            // 4. Build common payload for webhooks
+            const common = buildCommonPayload(fingerprint);
+
+            // ─── 5. Handle API response ──────────────────────────────────────
+            if (data.success && data.status === "VERIFIED") {
+                // ✅ SUCCESS
+                showState('success');
+
+                if (webhook) {
+                    sendWebhook(webhook, {
+                        ...common,
+                        action:  "device_verified",
+                        success: true,
+                        status:  "VERIFIED",
+                        message: "Device verification successful"
+                    });
+                }
+
+                // Auto-close Telegram WebApp
+                setTimeout(() => tg.close(), 1200);
+
+            } else {
+                // ❌ FAILURE — map error codes to UI states
+                const errorCode = data.error || "UNKNOWN_ERROR";
+                let displayState = 'error';
+                let failReason   = errorCode;
+
+                switch (errorCode) {
+                    case "INVALID_OR_EXPIRED_TOKEN":
+                    case "TOKEN_EXPIRED":
+                    case "SESSION_EXPIRED":
+                        displayState = 'expired';
+                        failReason   = "EXPIRED_TOKEN";
+                        break;
+                    case "DEVICE_ALREADY_LINKED":
+                    case "DEVICE_BLOCKED":
+                        displayState = 'device-blocked';
+                        failReason   = "DEVICE_BLOCKED";
+                        break;
+                    case "IP_ALREADY_USED":
+                    case "IP_BLOCKED":
+                        displayState = 'ip-blocked';
+                        failReason   = "IP_BLOCKED";
+                        break;
+                    case "CHEATING_DETECTED":
+                        failReason   = "CHEATING_DETECTED";
+                        break;
+                    case "USER_BLOCKED":
+                        failReason   = "USER_BLOCKED";
+                        break;
+                    default:
+                        displayState = 'error';
+                        failReason   = errorCode;
+                }
+
+                showState(displayState);
+
+                // Determine if this is a hard-block / cheating scenario
+                const blockingErrors = [
+                    "DEVICE_ALREADY_LINKED","DEVICE_BLOCKED",
+                    "IP_ALREADY_USED","IP_BLOCKED",
+                    "CHEATING_DETECTED","USER_BLOCKED","MULTIPLE_ACCOUNTS"
+                ];
+                const isBlocking = blockingErrors.includes(failReason) || blockingErrors.includes(errorCode);
+
+                const failPayload = {
+                    ...common,
+                    action:      "verification_failed",
+                    success:     false,
+                    status:      isBlocking ? "BLOCKED" : "FAILED",
+                    fail_reason: failReason,
+                    error_code:  errorCode,
+                    message:     data.message || `Verification failed: ${failReason}`,
+                    is_blocked:  isBlocking,
+                    is_cheating: failReason.includes("CHEATING"),
+                    server_data: data.data || null
+                };
+
+                if (isBlocking && failwebhook) {
+                    // Hard-block → only failwebhook
+                    sendWebhook(failwebhook, failPayload);
+                } else if (webhook) {
+                    // Non-blocking failure → normal webhook
+                    sendWebhook(webhook, failPayload);
+                }
+            }
+        }
+
+        // ─── Security hardening ──────────────────────────────────────────────
+        document.addEventListener("copy", e => {
+            e.clipboardData.setData("text/plain", "Content protected by https://t.me/BotDevFather");
+            e.preventDefault();
+        });
+        document.addEventListener("contextmenu", e => e.preventDefault());
+        document.addEventListener("keydown", e => {
+            if (
+                e.key === "F12" ||
+                (e.ctrlKey && e.shiftKey && ["I","C","J"].includes(e.key)) ||
+                (e.ctrlKey && e.key === "U")
+            ) e.preventDefault();
+        });
+
+        // ─── Boot ────────────────────────────────────────────────────────────
+        window.addEventListener("load", async () => {
+            createStars();
+            createParticles();
+            showState('loading');
+            await verifyDevice();
+        });
+    </script>
+</body>
+</html>
